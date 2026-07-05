@@ -1,0 +1,186 @@
+<!-- ... existing code ... -->
+      function buildDailyFields(entry) {
+        const room = roomById(entry.roomId);
+        const prefix = `${room.name} ${entry.item}`;
+        const touched = entry.touched || {};
+        const fields = {
+          "日期": normalizeDateKey(entry.date)
+        };
+        if (touched.note || entry.note) fields["備註"] = entry.note || "";
+        if (touched.peopleQty || (!entry.touched && Number(entry.peopleQty || 0))) fields[`${prefix} 人數`] = Number(entry.peopleQty || 0);
+        if (touched.inQty || (!entry.touched && Number(entry.inQty || 0))) {
+          const inLabel = String(entry.item || "").includes("補充") ? "補充數" : "補充";
+          fields[`${prefix} ${inLabel}`] = Number(entry.inQty || 0);
+        }
+        if (touched.balanceQty || (!entry.touched && Number(entry.balanceQty || 0))) fields[`${prefix} 結存`] = Number(entry.balanceQty || 0);
+        if (touched.usedQty || (!entry.touched && Number(entry.usedQty || 0))) fields[`${prefix} 用量`] = Number(entry.usedQty || 0);
+        return fields;
+      }
+
+      function normalizeSheetRows(roomId, rows) {
+        const room = roomById(roomId);
+        
+        // 徹底清洗 Google Sheets 回傳的屬性鍵名稱，避免不可見空格或編碼異常干擾
+        const cleanRows = rows.map(row => {
+          const clean = {};
+          Object.entries(row).forEach(([k, v]) => {
+            clean[String(k).trim()] = typeof v === 'string' ? v.trim() : v;
+          });
+          return clean;
+        });
+
+        const sourceRows = cleanRows.some((row) => row.item || row["品項"]) ? cleanRows : mergeRowsByDate(cleanRows);
+        return sourceRows.flatMap((row, rowIndex) => {
+          // 若為 structured 單列格式，徹底轉譯為英文標準 Key，防止計算與顯示出現 NaN 或 0
+          if (row.item || row["品項"]) {
+            return [{
+              id: row.id || `${roomId}-${row.date || row["日期"] || rowIndex}`,
+              roomId,
+              date: normalizeDateKey(row.date || row["日期"]),
+              item: row.item || row["品項"] || "未命名",
+              peopleQty: Number(row.peopleQty ?? row["人數"] ?? 0),
+              inQty: Number(row.inQty ?? row["入庫"] ?? row["補充"] ?? row["補充數"] ?? 0),
+              usedQty: Number(row.usedQty ?? row["使用"] ?? row["用量"] ?? 0),
+              balanceQty: Number(row.balanceQty ?? row["結存"] ?? 0),
+              wasteQty: Number(row.wasteQty ?? row["報廢"] ?? 0),
+              note: row.note || row["備註"] || "",
+              updatedAt: row.updatedAt || new Date().toISOString()
+            }];
+          }
+          const date = normalizeDateKey(row["日期"] || row.date);
+          if (!date) return [];
+          const grouped = new Map();
+          Object.entries(row).forEach(([header, value]) => {
+            if (value === "" || value == null) return;
+            const parsed = parseDailyHeader(header, room.name);
+            if (!parsed) return;
+            const current = grouped.get(parsed.item) || {
+              id: `${roomId}-${date}-${parsed.item}-${rowIndex}`,
+              roomId,
+              date,
+              item: parsed.item,
+              peopleQty: 0,
+              inQty: 0,
+              usedQty: 0,
+              balanceQty: 0,
+              wasteQty: 0,
+              note: row["備註"] || ""
+            };
+            current[parsed.key] = Number(value || 0);
+            grouped.set(parsed.item, current);
+          });
+          return [...grouped.values()];
+        });
+      }
+
+      function mergeRowsByDate(rows) {
+        const merged = new Map();
+        rows.forEach((row) => {
+          const date = normalizeDateKey(row["日期"] || row.date);
+          if (!date) return;
+          const current = merged.get(date) || { ...row, "日期": date, date };
+          Object.entries(row).forEach(([key, value]) => {
+            if (value === "" || value == null) return;
+            current[key] = value;
+          });
+          current["日期"] = date;
+          current.date = date;
+          merged.set(date, current);
+        });
+        return [...merged.values()];
+      }
+
+      function normalizeDateKey(value) {
+        if (!value) return "";
+        const text = String(value).trim();
+        const match = text.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+        if (match) {
+          return `${match[1].padStart(4, "0")}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
+        }
+        const parsed = new Date(text);
+        if (Number.isNaN(parsed.getTime())) return text.replaceAll("/", "-").slice(0, 10);
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, "0");
+        const day = String(parsed.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function parseDailyHeader(header, roomName) {
+        const trimmedHeader = String(header).trim();
+        const trimmedRoom = String(roomName).trim();
+        if (trimmedHeader === "日期" || trimmedHeader === "備註" || !trimmedHeader.startsWith(`${trimmedRoom} `)) return null;
+        const suffixMap = [
+          [" 補充數", "inQty"],
+          [" 人數", "peopleQty"],
+          [" 補充", "inQty"],
+          [" 結存", "balanceQty"],
+          [" 用量", "usedQty"]
+        ];
+        const body = trimmedHeader.slice(trimmedRoom.length + 1).trim();
+        const match = suffixMap.find(([suffix]) => body.endsWith(suffix.trim()) || body.endsWith(suffix));
+        if (!match) return null;
+        return {
+          item: body.slice(0, -match[0].length).trim(),
+          key: match[1]
+        };
+      }
+
+      export async function overwriteRoom(roomId, entries) {
+<!-- ... existing code ... -->
+      document.addEventListener("DOMContentLoaded", () => {
+        const state = {
+          viewMode: "mobile",
+          roomId: null, 
+          year: new Date().getFullYear(),
+          month: new Date().getMonth() + 1
+        };
+
+        const actions = {
+          openRoom(roomId) {
+            state.roomId = roomId;
+            ui.render();
+          },
+          setMonth(month) {
+            state.month = month;
+            ui.render();
+          },
+          changeYear(year) {
+            state.year = year;
+            ui.render();
+          },
+          setViewMode(mode) {
+            state.viewMode = mode;
+            ui.render();
+          }
+        };
+
+        const ui = createUI(state, actions);
+
+        document.querySelector("#backBtn").addEventListener("click", () => {
+          state.roomId = null;
+          ui.render();
+        });
+
+        document.querySelector("#settingsBtn").addEventListener("click", () => {
+          ui.openSettings();
+        });
+
+        document.querySelector("#syncBtn").addEventListener("click", () => {
+          ui.syncCurrentRoom();
+        });
+
+        ui.render();
+
+        // 核心修正：當頁面開啟或重新整理時，自動連線雲端最新盤點數據，免去手動按同步
+        const settings = loadSettings();
+        if (settings.apiUrl) {
+          toast("🔄 正在連線雲端同步最新盤點數據...");
+          ui.syncCurrentRoom().catch((err) => {
+            console.warn("初始同步失敗，正在採用本機暫存資料:", err);
+            toast("⚠️ 雲端連線失敗，已自動載入本機離線緩存");
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
