@@ -1,4 +1,1164 @@
-<!-- ... existing code ... -->
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="放射盤點">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>放射科對比劑智慧盤點系統</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,0,0&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- 使用 Tailwind CSS 提昇 UI 與 AI 聊天介面美觀性 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#2563eb',
+              'primary-dark': '#1d4ed8',
+              'primary-light': '#eff6ff',
+            }
+          }
+        }
+      }
+    </script>
+
+    <style>
+      :root {
+        --primary: #2563eb;
+        --primary-dark: #1d4ed8;
+        --primary-light: #eff6ff;
+        --bg-app: #f8fafc;
+        --bg-surface: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+        --accent-green: #10b981;
+        --accent-red: #ef4444;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --radius: 12px;
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: 'Noto Sans TC', sans-serif;
+        background-color: var(--bg-app);
+        color: var(--text-main);
+        line-height: 1.5;
+        overflow-x: hidden;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .material-symbols-rounded {
+        font-family: 'Material Symbols Rounded';
+        font-weight: normal;
+        font-style: normal;
+        font-size: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        text-transform: none;
+        letter-spacing: normal;
+        word-wrap: normal;
+        white-space: nowrap;
+        direction: ltr;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        font-feature-settings: 'liga';
+        width: 24px;
+        height: 24px;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+
+      .app-shell {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        max-width: 100%;
+      }
+
+      body[data-view-mode="mobile"] .app-shell {
+        max-width: 480px;
+        margin: 0 auto;
+        box-shadow: var(--shadow-lg);
+        background-color: var(--bg-app);
+        border-left: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
+        min-height: 100vh;
+      }
+
+      .top-app-bar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background-color: var(--bg-surface);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        gap: 12px;
+      }
+
+      .title-block {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .title-block h1 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .title-block p {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .icon-btn {
+        background: none;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-main);
+        cursor: pointer;
+        transition: var(--transition);
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+
+      .icon-btn:hover {
+        background-color: var(--primary-light);
+        color: var(--primary);
+      }
+
+      .icon-btn.is-hidden {
+        display: none !important;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .spinning {
+        animation: spin 1s linear infinite;
+        color: var(--primary);
+      }
+
+      .view-root {
+        flex: 1;
+        padding: 16px;
+        outline: none;
+      }
+
+      .hero-panel {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #ffffff;
+        padding: 24px 20px;
+        border-radius: var(--radius);
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-md);
+      }
+
+      .hero-panel h2 {
+        font-size: 1.35rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+
+      .view-mode-panel {
+        background-color: var(--bg-surface);
+        padding: 12px 16px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border-color);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .view-mode-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+      }
+
+      .segmented-control {
+        display: flex;
+        background-color: var(--bg-app);
+        padding: 4px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+      }
+
+      .segmented-control button {
+        background: none;
+        border: none;
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: var(--transition);
+      }
+
+      .segmented-control button.active {
+        background-color: var(--bg-surface);
+        color: var(--primary);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .icon-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+
+      body[data-view-mode="desktop"] .icon-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .app-card {
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        padding: 16px;
+        text-align: left;
+        cursor: pointer;
+        transition: var(--transition);
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .app-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--accent, var(--primary));
+      }
+
+      .card-icon {
+        width: 44px;
+        height: 44px;
+        background-color: var(--primary-light);
+        color: var(--accent, var(--primary));
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+
+      .app-card h3 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-main);
+      }
+
+      .app-card p {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+
+      .alert-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: var(--radius);
+        margin-bottom: 16px;
+        font-size: 0.9rem;
+        border: 1px solid transparent;
+      }
+
+      .alert-card.danger {
+        background-color: #fef2f2;
+        border-color: #fee2e2;
+        color: #991b1b;
+      }
+
+      .alert-card.success {
+        background-color: #f0fdf4;
+        border-color: #dcfce7;
+        color: #166534;
+      }
+
+      .alert-card .material-symbols-rounded {
+        font-size: 20px;
+        margin-top: 2px;
+      }
+
+      .alert-card .muted {
+        font-size: 0.8rem;
+        display: block;
+        margin-top: 4px;
+        color: var(--text-muted);
+      }
+
+      .table-card {
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 24px;
+      }
+
+      .table-toolbar {
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .table-toolbar h3 {
+        font-size: 1rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        width: 100%;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+        text-align: left;
+      }
+
+      th, td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      th {
+        background-color: var(--bg-app);
+        font-weight: 700;
+        color: var(--text-muted);
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        border-radius: 12px;
+        background-color: var(--primary-light);
+        color: var(--primary);
+      }
+
+      .timeline-card {
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .year-selector {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .months-slider {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: thin;
+      }
+
+      .month-btn {
+        background: none;
+        border: 1px solid var(--border-color);
+        padding: 6px 14px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        border-radius: 20px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: var(--transition);
+      }
+
+      .month-btn.active {
+        background-color: var(--primary);
+        color: #ffffff;
+        border-color: var(--primary);
+      }
+
+      .app-dialog {
+        border: none;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-lg);
+        padding: 0;
+        max-width: 500px;
+        width: calc(100% - 32px);
+        margin: auto;
+        background-color: var(--bg-surface);
+      }
+
+      .app-dialog::backdrop {
+        background-color: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(4px);
+      }
+
+      .dialog-head {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .dialog-head h2 {
+        font-size: 1.15rem;
+        font-weight: 700;
+      }
+
+      .form-grid {
+        padding: 20px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+      }
+
+      .span-2 {
+        grid-column: span 2;
+      }
+
+      .form-grid label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text-main);
+      }
+
+      .form-grid input, .form-grid textarea, .form-grid select {
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        font-family: inherit;
+        font-size: 0.9rem;
+        outline: none;
+        transition: var(--transition);
+      }
+
+      .form-grid input:focus, .form-grid textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+      }
+
+      .dialog-actions {
+        padding: 16px 20px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background-color: var(--bg-app);
+        border-bottom-left-radius: var(--radius);
+        border-bottom-right-radius: var(--radius);
+      }
+
+      .filled-btn {
+        background-color: var(--primary);
+        color: #ffffff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: var(--transition);
+      }
+
+      .filled-btn:hover {
+        background-color: var(--primary-dark);
+      }
+
+      .text-btn {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+
+      .text-btn:hover {
+        background-color: var(--border-color);
+        color: var(--text-main);
+      }
+
+      .tonal-btn {
+        background-color: var(--primary-light);
+        color: var(--primary);
+        border: none;
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: var(--transition);
+      }
+
+      .tonal-btn:hover {
+        background-color: var(--primary);
+        color: #ffffff;
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translate(-50%, 100px);
+        background-color: #1e293b;
+        color: #ffffff;
+        padding: 12px 24px;
+        border-radius: 30px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        box-shadow: var(--shadow-lg);
+        z-index: 1000;
+        opacity: 0;
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+        text-align: center;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+
+      .toast.show {
+        transform: translate(-50%, 0);
+        opacity: 1;
+      }
+
+      .wide-dialog {
+        max-width: 650px;
+      }
+
+      .settings-section {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .settings-section h3 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: var(--text-main);
+      }
+
+      .settings-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .settings-row {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        align-items: center;
+        gap: 16px;
+        font-size: 0.85rem;
+      }
+
+      .settings-row input {
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        font-size: 0.85rem;
+        outline: none;
+      }
+
+      .helper {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 6px;
+      }
+
+      .entry-groups {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .entry-group {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        background-color: var(--bg-app);
+      }
+
+      .entry-group h3 {
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+        color: var(--primary);
+      }
+
+      .entry-group-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .syringe-panel {
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .syringe-card-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .syringe-stat-card {
+        border: 1px solid var(--border-color);
+        background-color: var(--bg-app);
+        border-radius: 8px;
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .syringe-stat-card span {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+
+      .syringe-stat-card strong {
+        font-size: 1.15rem;
+        color: var(--text-main);
+      }
+
+      .syringe-stat-card.total {
+        grid-column: span 2;
+        background-color: var(--primary-light);
+        border-color: rgba(37, 99, 235, 0.2);
+      }
+
+      .syringe-stat-card.total strong {
+        color: var(--primary);
+      }
+
+      .inline-number {
+        width: 70px;
+        padding: 4px 8px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        text-align: center;
+      }
+
+      .empty-cell {
+        color: var(--text-muted);
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <header class="top-app-bar">
+        <button id="backBtn" class="icon-btn is-hidden" type="button" aria-label="返回首頁">
+          <span class="material-symbols-rounded">arrow_back</span>
+        </button>
+        <div class="title-block">
+          <h1 id="appTitle">放射科對比劑智慧盤點</h1>
+          <p id="appSubtitle">智慧試算、Google Sheets 同步與離線盤點</p>
+        </div>
+        <button id="syncBtn" class="icon-btn" type="button" aria-label="同步">
+          <span class="material-symbols-rounded">sync</span>
+        </button>
+        <button id="settingsBtn" class="icon-btn" type="button" aria-label="設定">
+          <span class="material-symbols-rounded">settings</span>
+        </button>
+      </header>
+
+      <main id="viewRoot" class="view-root" tabindex="-1"></main>
+    </div>
+
+    <!-- 盤點項目編輯 Dialog -->
+    <dialog id="entryDialog" class="app-dialog">
+      <form id="entryForm" method="dialog">
+        <div class="dialog-head">
+          <h2 id="entryDialogTitle">新增盤點</h2>
+          <button class="icon-btn" value="cancel" type="button" data-close-dialog aria-label="關閉">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+        <div class="form-grid">
+          <!-- 動態生成之表單欄位 -->
+        </div>
+        <div class="dialog-actions">
+          <button class="text-btn" value="cancel" type="button" data-close-dialog>取消</button>
+          <button class="filled-btn" value="default" type="submit">儲存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- 系統設定 Dialog -->
+    <dialog id="settingsDialog" class="app-dialog wide-dialog">
+      <form id="settingsForm" method="dialog">
+        <div class="dialog-head">
+          <h2>設定</h2>
+          <button class="icon-btn" value="cancel" type="button" data-close-dialog aria-label="關閉">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+        <section class="settings-section">
+          <h3>Google Apps Script API</h3>
+          <label class="form-grid" style="padding:0; grid-template-columns:1fr;">
+            API 網址 <input id="apiUrlInput" name="apiUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+          </label>
+          <p class="helper">未設定時會保存在本機；設定後讀取、新增、修改與覆蓋會同步到 Google Sheets。</p>
+        </section>
+        <section class="settings-section">
+          <h3>Gemini AI 智慧設定</h3>
+          <label class="form-grid" style="padding:0; grid-template-columns:1fr;">
+            AI 語音簡報播報音色
+            <select id="aiVoiceSelect" name="aiVoice" class="p-2 border rounded border-slate-300">
+              <option value="Zephyr">Zephyr (Bright / 活力明亮)</option>
+              <option value="Charon" selected>Charon (Informative / 專業主播)</option>
+              <option value="Puck">Puck (Upbeat / 輕快親切)</option>
+              <option value="Kore">Kore (Firm / 沉穩內斂)</option>
+              <option value="Fenrir">Fenrir (Excitable / 熱情飽滿)</option>
+            </select>
+          </label>
+          <p class="helper">此設定將套用至「聽取語音簡報」功能。Gemini TTS 支援多語系，本系統已內建中文優化。</p>
+        </section>
+        <section class="settings-section">
+          <h3>月初期初庫存</h3>
+          <div id="initialStockInputs" class="settings-list"></div>
+        </section>
+        <section class="settings-section">
+          <h3>Sheet 對照</h3>
+          <div id="sheetMapInputs" class="settings-list"></div>
+        </section>
+        <div class="dialog-actions">
+          <button class="text-btn" value="cancel" type="button" data-close-dialog>取消</button>
+          <button class="filled-btn" value="default" type="submit">儲存設定</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script type="module">
+      // 宣告系統科室與相應品項
+      export const ROOMS = [
+        { id: "ct1", name: "1F CT", sheetName: "Sheet A", icon: "contrast", accent: "#2563eb", items: ["Omnipaque", "Visipague320", "高壓注射器針筒"] },
+        { id: "ct3", name: "3F CT", sheetName: "Sheet B", icon: "scanner", accent: "#0891b2", items: ["Omnipaque", "Visipague320", "高壓注射器針筒"] },
+        { id: "rct", name: "RCT", sheetName: "Sheet C", icon: "monitor_heart", accent: "#7c3aed", items: ["Omnipaque", "Ultravist370", "Visipague320", "高壓注射器針筒"] },
+        { id: "mri1", name: "1F MRI", sheetName: "Sheet D", icon: "magnet", accent: "#0f766e", items: ["Gadolinium", "Eovist", "生理食鹽水"] },
+        { id: "mri3", name: "3F MRI", sheetName: "Sheet E", icon: "view_in_ar", accent: "#16a34a", items: ["Gadolinium", "Eovist", "生理食鹽水"] },
+        { id: "mri3t", name: "3T MRI", sheetName: "Sheet F", icon: "sensors", accent: "#ca8a04", items: ["Gadolinium", "Primovist", "生理食鹽水"] },
+        { id: "special", name: "特殊", sheetName: "Sheet G", icon: "biotech", accent: "#db2777", items: ["Ultravist300", "Ultravist370", "Barium", "Omnipaque"] },
+        { id: "vascular", name: "血管", sheetName: "Sheet H", icon: "bloodtype", accent: "#dc2626", items: ["Omnipaque", "Ultravist370", "Visipague320", "高壓注射器針筒"] },
+        { id: "ivp", name: "IVP", sheetName: "Sheet I", icon: "science", accent: "#9333ea", items: ["Ultravist300"] },
+        { id: "summary", name: "總盤點彙整", sheetName: "Summary", icon: "inventory_2", accent: "#4f46e5", type: "summary", items: [] },
+        { id: "syringe", name: "高壓注射器針筒", sheetName: "Sheet J", icon: "vaccines", accent: "#0d9488", type: "syringe", items: ["高壓注射器針筒", "延長管", "三通閥"] },
+        { id: "ai_copilot", name: "AI 智慧臨床助理", sheetName: "AICopilot", icon: "psychology", accent: "#f97316", type: "ai_copilot", items: [] }
+      ];
+
+      // 預設期初設定與基本狀態
+      export const DEFAULT_SETTINGS = {
+        apiUrl: "https://script.google.com/macros/s/AKfycbyzlRGnF0LrTkGGLj1j2gpd7RX95EgEd88kP40XFNJJTCQCGa6uB02ypOhpyiy8t1Iv/exec",
+        aiVoice: "Charon",
+        sheets: Object.fromEntries(ROOMS.map((room) => [room.id, room.sheetName])),
+        initialStocks: {
+          "rct:omni": 26,
+          "rct:ultravist370": 32,
+          "ct3:omni": 50,
+          "ct1:omni": 54,
+          "vascular:omni": 10,
+          "vascular:ultravist370": 9,
+          "special:omni": 2,
+          "special:ultravist300": 5,
+          "special:ultravist370": 8,
+          "special:barium": 17,
+          "ivp:ultravist300": 17,
+          "mri1:ultravist300": 17,
+          "mri1:gadovist": 0,
+          "mri1:dotarem": 0,
+          "mri1:primovist": 0,
+          "mri3:gadovist": 0,
+          "mri3:dotarem": 0,
+          "mri3:primovist": 0,
+          "mri3t:gadovist": 0,
+          "mri3t:dotarem": 0,
+          "mri3t:primovist": 0,
+          "ct1:visipague": 0,
+          "ct3:visipague": 0,
+          "rct:visipague": 0,
+          "vascular:visipague": 0
+        }
+      };
+
+      const STORAGE_KEYS = {
+        settings: "radiology_inventory_settings_v1",
+        aiChatHistory: "radiology_ai_chat_history_v1"
+      };
+
+      export function loadSettings() {
+        const raw = localStorage.getItem(STORAGE_KEYS.settings);
+        if (!raw) return structuredClone(DEFAULT_SETTINGS);
+        try {
+          const parsed = JSON.parse(raw);
+          return {
+            ...structuredClone(DEFAULT_SETTINGS),
+            ...parsed,
+            apiUrl: parsed.apiUrl || DEFAULT_SETTINGS.apiUrl,
+            aiVoice: parsed.aiVoice || DEFAULT_SETTINGS.aiVoice,
+            sheets: { ...DEFAULT_SETTINGS.sheets, ...(parsed.sheets || {}) },
+            initialStocks: normalizeInitialStocks(parsed.initialStocks || {})
+          };
+        } catch {
+          return structuredClone(DEFAULT_SETTINGS);
+        }
+      }
+
+      export function saveSettings(settings) {
+        localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings));
+      }
+
+      export function roomById(id) {
+        return ROOMS.find((room) => room.id === id) || ROOMS[0];
+      }
+
+      export function operationalRooms() {
+        return ROOMS.filter((room) => room.type !== "summary" && room.type !== "ai_copilot");
+      }
+
+      export function stockKey(roomId, itemKey) {
+        return `${roomId}:${itemKey}`;
+      }
+
+      export function getInitialStock(settings, roomId, itemKey) {
+        return Number(settings.initialStocks?.[stockKey(roomId, itemKey)] || 0);
+      }
+
+      function normalizeInitialStocks(savedStocks) {
+        const normalized = { ...DEFAULT_SETTINGS.initialStocks, ...savedStocks };
+        const legacyMap = {
+          ct1: "ct1:omni",
+          ct3: "ct3:omni",
+          rct: "rct:omni",
+          mri1: "mri1:gadovist",
+          mri3: "mri3:gadovist",
+          mri3t: "mri3t:gadovist",
+          special: "special:omni",
+          vascular: "vascular:omni"
+        };
+        Object.entries(legacyMap).forEach(([legacyKey, newKey]) => {
+          if (savedStocks[legacyKey] != null && savedStocks[newKey] == null) {
+            normalized[newKey] = Number(savedStocks[legacyKey] || 0);
+          }
+          delete normalized[legacyKey];
+        });
+        return normalized;
+      }
+
+      const STORAGE_KEY = "radiology_inventory_entries_v1";
+
+      export function loadEntries() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return [];
+        }
+      }
+
+      export function saveEntries(entries) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      }
+
+      export function replaceAllEntries(entries) {
+        saveEntries(entries);
+      }
+
+      export function upsertEntry(entry) {
+        const entries = loadEntries();
+        const next = {
+          id: entry.id || crypto.randomUUID(),
+          roomId: entry.roomId,
+          date: entry.date,
+          item: entry.item.trim(),
+          peopleQty: Number(entry.peopleQty || 0),
+          inQty: Number(entry.inQty || 0),
+          usedQty: Number(entry.usedQty || 0),
+          balanceQty: Number(entry.balanceQty ?? 0),
+          wasteQty: Number(entry.wasteQty || 0),
+          note: entry.note || "",
+          touched: entry.touched || null,
+          updatedAt: new Date().toISOString()
+        };
+        const index = entries.findIndex((row) =>
+          row.id === next.id ||
+          (row.roomId === next.roomId && row.date === next.date && normalizeItemName(row.item) === normalizeItemName(next.item))
+        );
+        if (index >= 0) entries[index] = next;
+        else entries.push(next);
+        saveEntries(entries);
+        return next;
+      }
+
+      export function replaceEntriesForRoom(roomId, rows) {
+        const keep = loadEntries().filter((entry) => entry.roomId !== roomId);
+        const normalized = rows.map((row) => ({
+          id: row.id || crypto.randomUUID(),
+          roomId,
+          date: normalizeDate(row.date),
+          item: row.item || row.品項 || "未命名",
+          peopleQty: Number(row.peopleQty ?? row.人數 ?? 0),
+          inQty: Number(row.inQty ?? row.入庫 ?? 0),
+          usedQty: Number(row.usedQty ?? row.使用 ?? 0),
+          balanceQty: Number(row.balanceQty ?? row.結存 ?? 0),
+          wasteQty: Number(row.wasteQty ?? row.報廢 ?? 0),
+          note: row.note || row.備註 || "",
+          updatedAt: row.updatedAt || new Date().toISOString()
+        }));
+        saveEntries([...keep, ...normalized]);
+      }
+
+      export function entriesFor(roomId, year, month) {
+        const prefix = `${year}-${String(month).padStart(2, "0")}-`;
+        return loadEntries()
+          .filter((entry) => entry.roomId === roomId && entry.date?.startsWith(prefix))
+          .sort((a, b) => a.date.localeCompare(b.date));
+      }
+
+      export function daysInMonth(year, month) {
+        return new Date(year, month, 0).getDate();
+      }
+
+      export function isoDate(year, month, day) {
+        return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      }
+
+      export function normalizeDate(value) {
+        if (!value) return isoDate(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate());
+        return String(value).replaceAll("/", "-").slice(0, 10);
+      }
+
+      export function calculateDailyRows(roomId, year, month) {
+        const settings = loadSettings();
+        const entries = entriesFor(roomId, year, month);
+        let balance = resolveOpeningStock(roomId, year, month);
+        const totalDays = daysInMonth(year, month);
+
+        return Array.from({ length: totalDays }, (_, index) => {
+          const day = index + 1;
+          const date = isoDate(year, month, day);
+          const dayEntries = entries.filter((entry) => entry.date === date);
+          const inQty = sum(dayEntries, "inQty");
+          const usedQty = sum(dayEntries, "usedQty");
+          const wasteQty = sum(dayEntries, "wasteQty");
+          balance = balance + inQty - usedQty - wasteQty;
+          return {
+            day,
+            date,
+            weekday: new Date(`${date}T00:00:00`).getDay(),
+            entries: dayEntries,
+            itemText: [...new Set(dayEntries.map((entry) => entry.item))].join("、"),
+            inQty,
+            usedQty,
+            wasteQty,
+            balance,
+            openingStock: settings.initialStocks[roomId] || 0,
+            completed: dayEntries.length > 0
+          };
+        });
+      }
+
+      export function calculateAlert(roomId, year, month, today = new Date()) {
+        const rows = calculateDailyRows(roomId, year, month);
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1;
+        const cutoff = year === currentYear && month === currentMonth ? today.getDate() : daysInMonth(year, month);
+        const missing = rows.filter((row) => row.day <= cutoff && row.weekday !== 0 && !row.completed);
+        return {
+          missingCount: missing.length,
+          missingDays: missing.map((row) => row.day),
+          complete: missing.length === 0
+        };
+      }
+
+      export function calculateMonthlyMetrics(roomId, year, month) {
+        const rows = calculateDailyRows(roomId, year, month);
+        return {
+          roomId,
+          year,
+          month,
+          inQty: sum(rows, "inQty"),
+          usedQty: sum(rows, "usedQty"),
+          wasteQty: sum(rows, "wasteQty"),
+          endingStock: rows.at(-1)?.balance || resolveOpeningStock(roomId, year, month),
+          openingStock: resolveOpeningStock(roomId, year, month)
+        };
+      }
+
+      export function calculateSummary(roomIds, year, month) {
+        const roomMetrics = roomIds.map((roomId) => calculateMonthlyMetrics(roomId, year, month));
+        return {
+          roomMetrics,
+          totals: {
+            inQty: sum(roomMetrics, "inQty"),
+            usedQty: sum(roomMetrics, "usedQty"),
+            wasteQty: sum(roomMetrics, "wasteQty"),
+            endingStock: sum(roomMetrics, "endingStock")
+          }
+        };
+      }
+
+      export function resolveOpeningStock(roomId, year, month) {
+        const settings = loadSettings();
+        let opening = Number(settings.initialStocks[roomId] || 0);
+        for (let currentMonth = 1; currentMonth < month; currentMonth += 1) {
+          const previousRows = calculateDailyRowsWithoutCarry(roomId, year, currentMonth, opening);
+          opening = previousRows.at(-1)?.balance ?? opening;
+        }
+        return opening;
+      }
+
+      function calculateDailyRowsWithoutCarry(roomId, year, month, opening) {
+        const entries = entriesFor(roomId, year, month);
+        let balance = opening;
+        return Array.from({ length: daysInMonth(year, month) }, (_, index) => {
+          const date = isoDate(year, month, index + 1);
+          const dayEntries = entries.filter((entry) => entry.date === date);
+          balance = balance + sum(dayEntries, "inQty") - sum(dayEntries, "usedQty") - sum(dayEntries, "wasteQty");
+          return { date, balance };
+        });
+      }
+
+      function sum(rows, key) {
+        return rows.reduce((total, row) => total + Number(row[key] || 0), 0);
+      }
+
+      function normalizeItemName(value) {
+        return String(value || "").trim().toLowerCase();
+      }
+
+      export async function fetchRoomEntries(roomId) {
+        const settings = loadSettings();
+        if (!settings.apiUrl) return [];
+        const url = new URL(settings.apiUrl);
+        url.searchParams.set("action", "list");
+        url.searchParams.set("sheet", settings.sheets[roomId]);
+        url.searchParams.set("_", String(Date.now()));
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Google Sheets 讀取失敗：${response.status}`);
+        const payload = await response.json();
+        const rows = Array.isArray(payload) ? payload : payload.rows || [];
+        replaceEntriesForRoom(roomId, normalizeSheetRows(roomId, rows));
+        return rows;
+      }
+
+      export async function fetchRoomsFresh(roomIds) {
+        const settings = loadSettings();
+        if (!settings.apiUrl) return [];
+        const results = await Promise.all(roomIds.map(async (roomId) => {
+          const url = new URL(settings.apiUrl);
+          url.searchParams.set("action", "list");
+          url.searchParams.set("sheet", settings.sheets[roomId]);
+          url.searchParams.set("_", `${Date.now()}-${roomId}`);
+          const response = await fetch(url, { cache: "no-store" });
+          if (!response.ok) throw new Error(`${roomById(roomId).name} 讀取失敗：${response.status}`);
+          const payload = await response.json();
+          const rows = Array.isArray(payload) ? payload : payload.rows || [];
+          return normalizeSheetRows(roomId, rows);
+        }));
+        const entries = results.flat();
+        replaceAllEntries(entries);
+        return entries;
+      }
+
+      export async function syncEntry(entry) {
+        const settings = loadSettings();
+        if (!settings.apiUrl) return { offline: true };
+        const response = await fetch(settings.apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "upsertDaily",
+            sheet: settings.sheets[entry.roomId],
+            row: entry,
+            fields: buildDailyFields(entry)
+          })
+        });
+        if (!response.ok) throw new Error(`Google Sheets 寫入失敗：${response.status}`);
+        return response.json();
+      }
+
       function buildDailyFields(entry) {
         const room = roomById(entry.roomId);
         const prefix = `${room.name} ${entry.item}`;
@@ -19,34 +1179,9 @@
 
       function normalizeSheetRows(roomId, rows) {
         const room = roomById(roomId);
-        
-        // 徹底清洗 Google Sheets 回傳的屬性鍵名稱，避免不可見空格或編碼異常干擾
-        const cleanRows = rows.map(row => {
-          const clean = {};
-          Object.entries(row).forEach(([k, v]) => {
-            clean[String(k).trim()] = typeof v === 'string' ? v.trim() : v;
-          });
-          return clean;
-        });
-
-        const sourceRows = cleanRows.some((row) => row.item || row["品項"]) ? cleanRows : mergeRowsByDate(cleanRows);
+        const sourceRows = rows.some((row) => row.item || row.品項) ? rows : mergeRowsByDate(rows);
         return sourceRows.flatMap((row, rowIndex) => {
-          // 若為 structured 單列格式，徹底轉譯為英文標準 Key，防止計算與顯示出現 NaN 或 0
-          if (row.item || row["品項"]) {
-            return [{
-              id: row.id || `${roomId}-${row.date || row["日期"] || rowIndex}`,
-              roomId,
-              date: normalizeDateKey(row.date || row["日期"]),
-              item: row.item || row["品項"] || "未命名",
-              peopleQty: Number(row.peopleQty ?? row["人數"] ?? 0),
-              inQty: Number(row.inQty ?? row["入庫"] ?? row["補充"] ?? row["補充數"] ?? 0),
-              usedQty: Number(row.usedQty ?? row["使用"] ?? row["用量"] ?? 0),
-              balanceQty: Number(row.balanceQty ?? row["結存"] ?? 0),
-              wasteQty: Number(row.wasteQty ?? row["報廢"] ?? 0),
-              note: row.note || row["備註"] || "",
-              updatedAt: row.updatedAt || new Date().toISOString()
-            }];
-          }
+          if (row.item || row.品項) return [row];
           const date = normalizeDateKey(row["日期"] || row.date);
           if (!date) return [];
           const grouped = new Map();
@@ -64,7 +1199,7 @@
               usedQty: 0,
               balanceQty: 0,
               wasteQty: 0,
-              note: row["備註"] || ""
+              note: (row["備註"] || row["備註 "] || "").trim()
             };
             current[parsed.key] = Number(value || 0);
             grouped.set(parsed.item, current);
@@ -105,10 +1240,12 @@
         return `${year}-${month}-${day}`;
       }
 
+      // 強固型 Trim 欄位分析，徹底移除前後空白所引起的比對錯誤
       function parseDailyHeader(header, roomName) {
-        const trimmedHeader = String(header).trim();
-        const trimmedRoom = String(roomName).trim();
+        const trimmedHeader = String(header || "").trim();
+        const trimmedRoom = String(roomName || "").trim();
         if (trimmedHeader === "日期" || trimmedHeader === "備註" || !trimmedHeader.startsWith(`${trimmedRoom} `)) return null;
+        
         const suffixMap = [
           [" 補充數", "inQty"],
           [" 人數", "peopleQty"],
@@ -116,17 +1253,1362 @@
           [" 結存", "balanceQty"],
           [" 用量", "usedQty"]
         ];
+        
         const body = trimmedHeader.slice(trimmedRoom.length + 1).trim();
-        const match = suffixMap.find(([suffix]) => body.endsWith(suffix.trim()) || body.endsWith(suffix));
+        const match = suffixMap.find(([suffix]) => body.endsWith(suffix.trim()));
         if (!match) return null;
+        
         return {
-          item: body.slice(0, -match[0].length).trim(),
+          item: body.slice(0, -match[0].trim().length).trim(),
           key: match[1]
         };
       }
 
       export async function overwriteRoom(roomId, entries) {
-<!-- ... existing code ... -->
+        const settings = loadSettings();
+        if (!settings.apiUrl) return { offline: true };
+        const response = await fetch(settings.apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "overwrite",
+            sheet: settings.sheets[roomId],
+            rows: entries
+          })
+        });
+        if (!response.ok) throw new Error(`Google Sheets 覆蓋失敗：${response.status}`);
+        return response.json();
+      }
+
+      export async function appendReportRows({ sheet, headers, rows }) {
+        const settings = loadSettings();
+        if (!settings.apiUrl) return { offline: true };
+        const response = await fetch(settings.apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "appendReport",
+            sheet,
+            headers,
+            rows
+          })
+        });
+        if (!response.ok) throw new Error(`Google Sheets 月紀錄寫入失敗：${response.status}`);
+        return response.json();
+      }
+
+      export function renderTimeline({ year, month, onSelect, onYearChange }) {
+        const container = document.createElement("section");
+        container.className = "timeline-card";
+
+        const yearRow = document.createElement("div");
+        yearRow.className = "year-selector";
+        yearRow.innerHTML = `
+          <button type="button" class="icon-btn btn-prev-year"><span class="material-symbols-rounded">chevron_left</span></button>
+          <span class="year-label"><strong>${year} 年</strong></span>
+          <button type="button" class="icon-btn btn-next-year"><span class="material-symbols-rounded">chevron_right</span></button>
+        `;
+        yearRow.querySelector(".btn-prev-year").addEventListener("click", () => onYearChange(year - 1));
+        yearRow.querySelector(".btn-next-year").addEventListener("click", () => onYearChange(year + 1));
+
+        const monthsGrid = document.createElement("div");
+        monthsGrid.className = "months-slider";
+        for (let m = 1; m <= 12; m++) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = `month-btn ${m === month ? "active" : ""}`;
+          btn.innerHTML = `${m}月`;
+          btn.addEventListener("click", () => onSelect(m));
+          monthsGrid.appendChild(btn);
+        }
+
+        container.appendChild(yearRow);
+        container.appendChild(monthsGrid);
+        return container;
+      }
+
+      async function callGeminiTextAPI(userPrompt, systemInstruction = "", useSearch = false) {
+        let delay = 1000;
+        const maxRetries = 3;
+        const model = "gemini-3-flash-preview";
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=`;
+
+        const payload = {
+          contents: [{ parts: [{ text: userPrompt }] }]
+        };
+
+        if (useSearch) {
+          payload.tools = [{ "google_search": {} }];
+        }
+
+        if (systemInstruction) {
+          payload.systemInstruction = {
+            parts: [{ text: systemInstruction }]
+          };
+        }
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            const response = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+              if (response.status === 429) {
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2;
+                continue;
+              }
+              throw new Error(`Gemini API 請求錯誤: ${response.status}`);
+            }
+            const result = await response.json();
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            let sources = [];
+            const groundingMetadata = result.candidates?.[0]?.groundingMetadata;
+            if (groundingMetadata && groundingMetadata.groundingAttributions) {
+              sources = groundingMetadata.groundingAttributions
+                .map(attr => ({
+                  uri: attr.web?.uri,
+                  title: attr.web?.title
+                }))
+                .filter(s => s.uri && s.title);
+            }
+
+            return { text, sources };
+          } catch (error) {
+            if (attempt === maxRetries) throw error;
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2;
+          }
+        }
+      }
+
+      async function callGeminiTtsAPI(textToSpeak, voiceName = "Charon") {
+        let delay = 1000;
+        const maxRetries = 3;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=`;
+
+        const payload = {
+          contents: [{
+            parts: [{ text: `請使用中文流暢、有感情、且語音節奏適中地播報下方醫學或庫存分析內容。請直接朗讀本文，切勿發出任何多餘標記或附屬說明語句：\n${textToSpeak}` }]
+          }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: voiceName }
+              }
+            }
+          }
+        };
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            const response = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+              if (response.status === 429) {
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2;
+                continue;
+              }
+              throw new Error(`TTS API 請求失敗：${response.status}`);
+            }
+            const result = await response.json();
+            const part = result?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType;
+
+            if (audioData && mimeType && mimeType.startsWith("audio/")) {
+              const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+              const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 24000;
+              const pcmData = base64ToArrayBuffer(audioData);
+              const pcm16 = new Int16Array(pcmData);
+              const wavBlob = pcmToWav(pcm16, sampleRate);
+              return URL.createObjectURL(wavBlob);
+            }
+            throw new Error("API 未傳回正確的音訊格式數據");
+          } catch (error) {
+            if (attempt === maxRetries) throw error;
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2;
+          }
+        }
+      }
+
+      function base64ToArrayBuffer(base64) {
+        const binaryString = window.atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+      }
+
+      function pcmToWav(pcm16Array, sampleRate) {
+        const buffer = new ArrayBuffer(44 + pcm16Array.length * 2);
+        const view = new DataView(buffer);
+
+        writeString(view, 0, 'RIFF');
+        view.setUint32(4, 36 + pcm16Array.length * 2, true);
+        writeString(view, 8, 'WAVE');
+        writeString(view, 12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true); 
+        view.setUint16(22, 1, true); 
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * 2, true); 
+        view.setUint16(32, 2, true); 
+        view.setUint16(34, 16, true); 
+        writeString(view, 36, 'data');
+        view.setUint32(40, pcm16Array.length * 2, true);
+
+        let offset = 44;
+        for (let i = 0; i < pcm16Array.length; i++, offset += 2) {
+          view.setInt16(offset, pcm16Array[i], true);
+        }
+
+        return new Blob([buffer], { type: 'audio/wav' });
+      }
+
+      function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+
+      export function createUI(state, actions) {
+        const root = document.querySelector("#viewRoot");
+        const title = document.querySelector("#appTitle");
+        const subtitle = document.querySelector("#appSubtitle");
+        const backBtn = document.querySelector("#backBtn");
+        const entryDialog = document.querySelector("#entryDialog");
+        const entryForm = document.querySelector("#entryForm");
+        const entryFormGrid = entryForm.querySelector(".form-grid");
+        const settingsDialog = document.querySelector("#settingsDialog");
+        const settingsForm = document.querySelector("#settingsForm");
+
+        function render() {
+          root.innerHTML = "";
+          document.body.dataset.viewMode = state.viewMode || "mobile";
+          const room = state.roomId ? roomById(state.roomId) : null;
+          backBtn.classList.toggle("is-hidden", !room);
+          title.textContent = room ? room.name : "放射科對比劑智慧盤點";
+          subtitle.textContent = room ? `${state.year} 年 ${String(state.month).padStart(2, "0")} 月` : "Google Sheets 智慧同步盤點";
+
+          if (!room) renderHome(root);
+          else if (room.type === "summary") renderSummary(root);
+          else if (room.type === "ai_copilot") renderAICopilot(root);
+          else renderRoom(root, room);
+          root.focus({ preventScroll: true });
+        }
+
+        function renderHome(target) {
+          target.append(renderViewModeToggle());
+          target.append(el("section", "hero-panel", `
+            <div>
+              <h2 class="text-xl">今日盤點工作台</h2>
+              <p class="text-sm opacity-90 mt-1">智慧算料與自動備份系統</p>
+            </div>
+          `));
+
+          const grid = el("section", "icon-grid");
+          ROOMS.forEach((room) => {
+            const card = el("button", "app-card");
+            card.type = "button";
+            card.style.setProperty("--accent", room.accent);
+            card.innerHTML = `
+              <span class="card-icon"><span class="material-symbols-rounded">${room.icon}</span></span>
+              <h3>${room.name}</h3>
+              <p>${room.type === "summary" ? "整合月報與匯出" : room.type === "ai_copilot" ? "醫學對話、數據診斷與語音簡報" : "每日盤點與結存"}</p>
+            `;
+            card.addEventListener("click", () => actions.openRoom(room.id));
+            grid.append(card);
+          });
+          target.append(grid);
+        }
+
+        function renderViewModeToggle() {
+          const currentMode = state.viewMode || "mobile";
+          const wrapper = el("section", "view-mode-panel", `
+            <div class="view-mode-label">
+              <span class="material-symbols-rounded">devices</span>
+              <strong>版面模式</strong>
+            </div>
+            <div class="segmented-control" role="group" aria-label="版面模式切換">
+              <button type="button" class="${currentMode === "mobile" ? "active" : ""}" data-view-mode="mobile">
+                <span class="material-symbols-rounded">smartphone</span>
+                手機版
+              </button>
+              <button type="button" class="${currentMode === "desktop" ? "active" : ""}" data-view-mode="desktop">
+                <span class="material-symbols-rounded">desktop_windows</span>
+                電腦版
+              </button>
+            </div>
+          `);
+          wrapper.querySelectorAll("[data-view-mode]").forEach((button) => {
+            button.addEventListener("click", () => actions.setViewMode(button.dataset.viewMode));
+          });
+          return wrapper;
+        }
+
+        function renderAICopilot(target) {
+          const settings = loadSettings();
+          const summaryData = buildContrastSummaryRows(state.year, state.month);
+          const syringeMetrics = buildSyringeMetrics(state.year, state.month);
+          
+          const dataSummaryContext = `
+目前年度/月份：${state.year}年${state.month}月
+【對比劑全院盤點彙整】：
+${summaryData.map(d => `- ${d.name}: 使用人數 ${d.people}人, 本月消耗 ${d.consumed}瓶, 期末結存 ${d.roomEnding}瓶`).join("\n")}
+
+【高壓注射器針筒消耗】：
+- RCT 攝影室消耗: ${syringeMetrics.rct} 支
+- 3F CT 攝影室消耗: ${syringeMetrics.ct3} 支
+- 1F CT 攝影室消耗: ${syringeMetrics.ct1} 支
+- 全院注射器總計: ${syringeMetrics.total} 支
+
+【系統狀態設定】：
+- 期初庫存設定：${JSON.stringify(settings.initialStocks)}
+          `;
+
+          const aiContainer = el("div", "flex flex-col gap-4 bg-white border border-slate-200 rounded-xl p-4 md:p-6 shadow-sm");
+          aiContainer.innerHTML = `
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-slate-100 pb-4 gap-2">
+              <div>
+                <h2 class="text-lg font-bold flex items-center gap-2 text-slate-800">
+                  <span class="material-symbols-rounded text-orange-500 text-3xl">psychology</span>
+                  Gemini AI 智慧特助 & 決策中心
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">
+                  自動與全院對比劑庫存及消耗紀錄同步，提供智慧臨床預估與語音簡報
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  即時數據已同步載入
+                </span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 my-2">
+              <button type="button" id="aiBtnTrend" class="flex items-center gap-3 p-3 bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 border border-orange-100 rounded-lg text-left transition text-slate-700">
+                <span class="p-2 bg-orange-500 text-white rounded-lg material-symbols-rounded">analytics</span>
+                <div>
+                  <h4 class="text-xs font-bold">庫存趨勢與預警</h4>
+                  <p class="text-[10px] text-slate-500 mt-0.5">預測安全水位、缺漏警報診斷</p>
+                </div>
+              </button>
+              <button type="button" id="aiBtnOrder" class="flex items-center gap-3 p-3 bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border border-blue-100 rounded-lg text-left transition text-slate-700">
+                <span class="p-2 bg-blue-500 text-white rounded-lg material-symbols-rounded">shopping_cart</span>
+                <div>
+                  <h4 class="text-xs font-bold">申領與採購建議</h4>
+                  <p class="text-[10px] text-slate-500 mt-0.5">依據消耗與結存算料安全建議</p>
+                </div>
+              </button>
+              <button type="button" id="aiBtnWarning" class="flex items-center gap-3 p-3 bg-gradient-to-br from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border border-purple-100 rounded-lg text-left transition text-slate-700">
+                <span class="p-2 bg-purple-500 text-white rounded-lg material-symbols-rounded">medical_information</span>
+                <div>
+                  <h4 class="text-xs font-bold">學術/臨床指引對話</h4>
+                  <p class="text-[10px] text-slate-500 mt-0.5">對比劑腎病、滲漏處置與速限</p>
+                </div>
+              </button>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-4 h-[420px]">
+              <div class="flex-1 flex flex-col border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                <div id="aiChatOutput" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm scrollbar-thin">
+                  <div class="bg-white border border-slate-100 rounded-lg p-3 text-slate-700 shadow-sm leading-relaxed max-w-[85%]">
+                    您好！我是放射科 Gemini 智慧決策助理。我已加載了 <strong>${state.year} 年 ${state.month} 月</strong> 的盤點數據與科室耗用紀錄。
+                    您可以直接點擊上方的<b>診斷工具捷徑</b>，或在下方輸入任何關於庫存、臨床規範或分析建議的問題！
+                  </div>
+                </div>
+                
+                <div class="p-3 bg-white border-t border-slate-200 flex flex-col gap-2">
+                  <div class="flex items-center justify-between">
+                    <label class="flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
+                      <input type="checkbox" id="aiSearchCheck" checked class="rounded border-slate-300 text-orange-500 focus:ring-orange-500">
+                      啟用 Google Search Grounding (上網搜尋最新臨床指引)
+                    </label>
+                    <button type="button" id="aiClearChat" class="text-[11px] text-slate-400 hover:text-slate-600 flex items-center gap-0.5">
+                      <span class="material-symbols-rounded text-xs">delete</span>
+                      清除紀錄
+                    </button>
+                  </div>
+                  <div class="flex gap-2">
+                    <input type="text" id="aiChatInput" placeholder="輸入問題（例如：幫我分析哪些品項有短缺危機？或者 Primovist 的適應症與注射速度）..." class="flex-1 p-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500">
+                    <button type="button" id="aiSendBtn" class="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg flex items-center gap-1 text-sm transition">
+                      發送
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="w-full md:w-64 border border-slate-200 rounded-lg p-4 bg-slate-50 flex flex-col justify-between">
+                <div>
+                  <h3 class="text-xs font-bold text-slate-700 flex items-center gap-1 border-b border-slate-200 pb-2 mb-3">
+                    <span class="material-symbols-rounded text-sm text-blue-500">volume_up</span>
+                    AI 語音簡報中心 (TTS)
+                  </h3>
+                  <p class="text-[11px] text-slate-500 mb-4 leading-relaxed">
+                    本系統支援 Gemini TTS 技術，可直接將分析成果轉化為流暢中文口白，方便您進行走動式庫存管理與語音交班。
+                  </p>
+                  
+                  <div id="aiAudioStatus" class="p-3 bg-white border border-slate-200 rounded-lg flex flex-col gap-2 shadow-sm text-xs text-slate-600">
+                    <div class="flex items-center gap-2">
+                      <span class="w-2.5 h-2.5 rounded-full bg-slate-300" id="aiVoiceIndicator"></span>
+                      <span id="aiAudioText">語音引擎準備就緒</span>
+                    </div>
+                    <audio id="aiAudioPlayer" class="w-full mt-2 hidden" controls></audio>
+                  </div>
+                </div>
+                
+                <div class="mt-4">
+                  <span class="text-[10px] text-slate-400 block text-center">由 Gemini 2.5 TTS 技術提供語音支援</span>
+                </div>
+              </div>
+            </div>
+          `;
+
+          target.append(aiContainer);
+
+          const chatOutput = aiContainer.querySelector("#aiChatOutput");
+          const chatInput = aiContainer.querySelector("#aiChatInput");
+          const sendBtn = aiContainer.querySelector("#aiSendBtn");
+          const searchCheck = aiContainer.querySelector("#aiSearchCheck");
+          const clearChatBtn = aiContainer.querySelector("#aiClearChat");
+          const audioPlayer = aiContainer.querySelector("#aiAudioPlayer");
+          const audioText = aiContainer.querySelector("#aiAudioText");
+          const voiceIndicator = aiContainer.querySelector("#aiVoiceIndicator");
+
+          let localHistory = [];
+          try {
+            const saved = localStorage.getItem(STORAGE_KEYS.aiChatHistory);
+            if (saved) {
+              localHistory = JSON.parse(saved);
+              localHistory.forEach(msg => {
+                appendChatMessage(msg.role, msg.text, msg.sources);
+              });
+            }
+          } catch (e) {
+            localHistory = [];
+          }
+
+          function appendChatMessage(role, text, sources = null) {
+            const bubble = document.createElement("div");
+            if (role === "user") {
+              bubble.className = "ml-auto bg-orange-500 text-white rounded-lg p-3 max-w-[85%] shadow-sm leading-relaxed text-right";
+              bubble.innerHTML = `<div>${text}</div>`;
+            } else {
+              bubble.className = "bg-white border border-slate-100 rounded-lg p-3 text-slate-700 shadow-sm leading-relaxed max-w-[85%] relative flex flex-col gap-2";
+              let contentHtml = `<div>${markdownToHtml(text)}</div>`;
+              
+              if (sources && sources.length > 0) {
+                contentHtml += `
+                  <div class="mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-400">
+                    <strong class="text-slate-500">🔗 參考資料來源：</strong>
+                    <ul class="list-disc pl-4 mt-1 space-y-0.5">
+                      ${sources.map(s => `<li><a href="${s.uri}" target="_blank" class="text-blue-500 hover:underline">${s.title}</a></li>`).join("")}
+                    </ul>
+                  </div>
+                `;
+              }
+
+              contentHtml += `
+                <div class="flex justify-end mt-2">
+                  <button type="button" class="btn-speak text-xs text-orange-500 hover:text-orange-700 font-medium flex items-center gap-1 px-2 py-1 rounded bg-orange-50 border border-orange-100 hover:border-orange-300 transition">
+                    <span class="material-symbols-rounded text-sm">volume_up</span>
+                    聽取語音簡報
+                  </button>
+                </div>
+              `;
+
+              bubble.innerHTML = contentHtml;
+              
+              bubble.querySelector(".btn-speak").addEventListener("click", async () => {
+                const globalSettings = loadSettings();
+                await playVoiceReport(text, globalSettings.aiVoice);
+              });
+            }
+            chatOutput.appendChild(bubble);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+          }
+
+          function markdownToHtml(md) {
+            return md
+              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+              .replace(/`([^`]+)`/g, '<code class="bg-slate-100 px-1 py-0.5 rounded text-xs text-orange-600 font-mono">$1</code>')
+              .replace(/\n/g, '<br>');
+          }
+
+          async function playVoiceReport(textToSpeak, voiceName) {
+            audioText.textContent = "🔊 正在合成 AI 語音...";
+            voiceIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
+            audioPlayer.classList.add("hidden");
+
+            const plainText = textToSpeak
+              .replace(/\*\*/g, "")
+              .replace(/\*/g, "")
+              .replace(/`+/g, "")
+              .replace(/[-*#]/g, "")
+              .slice(0, 1500); 
+
+            try {
+              const audioUrl = await callGeminiTtsAPI(plainText, voiceName);
+              audioPlayer.src = audioUrl;
+              audioPlayer.classList.remove("hidden");
+              audioText.textContent = "▶️ 語音播放中";
+              voiceIndicator.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-bounce";
+              audioPlayer.play();
+
+              audioPlayer.onended = () => {
+                audioText.textContent = "語音播放完畢";
+                voiceIndicator.className = "w-2.5 h-2.5 rounded-full bg-slate-300";
+              };
+            } catch (error) {
+              console.error(error);
+              audioText.textContent = "❌ 語音合成失敗";
+              voiceIndicator.className = "w-2.5 h-2.5 rounded-full bg-red-500";
+              toast(`語音合成錯誤: ${error.message}`);
+            }
+          }
+
+          async function handleSendMessage(customPrompt = null) {
+            const query = customPrompt || chatInput.value.trim();
+            if (!query) return;
+
+            if (!customPrompt) {
+              chatInput.value = "";
+            }
+
+            appendChatMessage("user", query);
+
+            localHistory.push({ role: "user", text: query });
+            localStorage.setItem(STORAGE_KEYS.aiChatHistory, JSON.stringify(localHistory));
+
+            const loaderBubble = document.createElement("div");
+            loaderBubble.className = "bg-white border border-slate-100 rounded-lg p-3 text-slate-400 shadow-sm flex items-center gap-2 max-w-[85%]";
+            loaderBubble.innerHTML = `
+              <span class="w-2 h-2 rounded-full bg-orange-500 animate-bounce" style="animation-delay:0.1s"></span>
+              <span class="w-2 h-2 rounded-full bg-orange-500 animate-bounce" style="animation-delay:0.2s"></span>
+              <span class="w-2 h-2 rounded-full bg-orange-500 animate-bounce" style="animation-delay:0.3s"></span>
+              <span class="text-xs text-slate-500">Gemini 正在分析科室數據...</span>
+            `;
+            chatOutput.appendChild(loaderBubble);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+
+            const systemPrompt = `
+你是一位精通醫院放射科、造影劑（對比劑、針筒耗材）管理的「智慧數據決策特助」。
+你現在必須針對使用者提出的問題進行專業、詳細、有建設性的回答。
+
+【本院當前月份盤點實體資料】：
+${dataSummaryContext}
+
+請注意：
+1. 你的回答必須緊扣本院當前選定的盤點數據。
+2. 算料必須精準。若要計算消耗量、結存或申請量，請依據上文提供的數字。
+3. 對於庫存不足或警報未完成者，給予適當的臨床改善提示。
+4. 回答內容應具備醫學與管理專業度，可多使用條列式。
+5. 盡量使用繁體中文。
+            `;
+
+            try {
+              const responseData = await callGeminiTextAPI(query, systemPrompt, searchCheck.checked);
+              loaderBubble.remove();
+
+              if (responseData && responseData.text) {
+                appendChatMessage("model", responseData.text, responseData.sources);
+                localHistory.push({ role: "model", text: responseData.text, sources: responseData.sources });
+                localStorage.setItem(STORAGE_KEYS.aiChatHistory, JSON.stringify(localHistory));
+              } else {
+                throw new Error("無法取得有效的回傳文字");
+              }
+            } catch (error) {
+              loaderBubble.remove();
+              appendChatMessage("model", `⚠️ 抱歉，AI 特助目前連線異常：${error.message}，請確認您的 API 是否有受限或網路暢通。`);
+            }
+          }
+
+          sendBtn.addEventListener("click", () => handleSendMessage());
+          chatInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") handleSendMessage();
+          });
+
+          clearChatBtn.addEventListener("click", () => {
+            localHistory = [];
+            localStorage.removeItem(STORAGE_KEYS.aiChatHistory);
+            chatOutput.innerHTML = `
+              <div class="bg-white border border-slate-100 rounded-lg p-3 text-slate-700 shadow-sm leading-relaxed max-w-[85%]">
+                歷史對話紀錄已清除。您可以重新點擊捷徑或輸入問題！
+              </div>
+            `;
+          });
+
+          aiContainer.querySelector("#aiBtnTrend").addEventListener("click", () => {
+            handleSendMessage("請針對本月全院各個對比劑與高壓針筒的期末庫存與消耗趨勢，進行『庫存趨勢與安全水位預警分析』，並幫我診斷是否有異常消耗或未完成盤點天數？");
+          });
+
+          aiContainer.querySelector("#aiBtnOrder").addEventListener("click", () => {
+            handleSendMessage("請幫我評估本月各攝影室對比劑與針筒的使用速度，並以庫存管理角度提供一份精準的『申領與下期採購備貨安全水位建議報告』。");
+          });
+
+          aiContainer.querySelector("#aiBtnWarning").addEventListener("click", () => {
+            handleSendMessage("請為放射科同仁整理一份臨床常見『造影劑（對比劑）外滲或滲漏（Extravasation）』的緊急處置指引，以及造影劑腎病變（CIN）的預防補水規範。");
+          });
+        }
+
+        function renderRoom(target, room) {
+          target.append(renderTimeline({
+            year: state.year,
+            month: state.month,
+            onSelect: actions.setMonth,
+            onYearChange: actions.changeYear
+          }));
+
+          if (room.type === "syringe") {
+            target.append(renderSyringeReferencePanel(room));
+            return;
+          }
+
+          const alert = calculateAlert(room.id, state.year, state.month);
+          target.append(el("section", `alert-card ${alert.complete ? "success" : "danger"}`, `
+            <span class="material-symbols-rounded">${alert.complete ? "check_circle" : "warning"}</span>
+            <strong>${alert.complete ? "本月盤點完成" : `尚有 ${alert.missingCount} 天未完成盤點`}</strong>
+            ${alert.complete ? "" : `<span class="muted">缺漏日期：${alert.missingDays.join("、")}</span>`}
+          `));
+
+          if (REFERENCE_TABLES[room.id]) {
+            target.append(renderReferenceRoomTable(room, REFERENCE_TABLES[room.id]));
+            return;
+          }
+
+          const rows = calculateDailyRows(room.id, state.year, state.month);
+          const table = tableShell(`${room.name} 日統計表`, "新增");
+          table.querySelector("[data-add]").addEventListener("click", () => openEntryDialog(room, isoDate(state.year, state.month, new Date().getDate())));
+          table.querySelector("thead").innerHTML = `
+            <tr><th>日期</th><th>品項</th><th>入庫</th><th>使用</th><th>報廢</th><th>結存</th><th>狀態</th><th>操作</th></tr>
+          `;
+          const body = table.querySelector("tbody");
+          rows.forEach((row) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${row.day} 日</td>
+              <td>${row.itemText || "<span class='empty-cell'>未登記</span>"}</td>
+              <td>${row.inQty}</td>
+              <td>${row.usedQty}</td>
+              <td>${row.wasteQty}</td>
+              <td><strong>${row.balance}</strong></td>
+              <td><span class="badge">${row.weekday === 0 ? "週日排除" : row.completed ? "完成" : "待補"}</span></td>
+              <td><button class="tonal-btn" type="button" data-date="${row.date}"><span class="material-symbols-rounded">add</span>新增</button></td>
+            `;
+            tr.querySelector("[data-date]").addEventListener("click", () => openEntryDialog(room, row.date));
+            body.append(tr);
+          });
+          target.append(table);
+        }
+
+        function renderReferenceRoomTable(room, config) {
+          const rows = calculateDailyRows(room.id, state.year, state.month);
+          const table = tableShell(`${room.name} 攝影室 每日盤點與明細登記`, "新增當日登記");
+          table.classList.add("reference-panel");
+          table.querySelector("[data-add]").addEventListener("click", () => openEntryDialog(room, isoDate(state.year, state.month, new Date().getDate())));
+          table.querySelector("thead").innerHTML = `
+            <tr>
+              <th rowspan="2">日期</th>
+              ${config.groups.map((group) => `<th colspan="${group.columns.length}">${group.label}</th>`).join("")}
+              <th rowspan="2">操作</th>
+            </tr>
+            <tr>
+              ${config.groups.flatMap((group) => group.columns.map((column) => `<th class="${columnClass(column)}">${columnLabel(column)}</th>`)).join("")}
+            </tr>
+          `;
+          const body = table.querySelector("tbody");
+          const balances = Object.fromEntries(config.groups.map((group) => [
+            group.key,
+            resolveGroupOpeningStock(room.id, group, state.year, state.month)
+          ]));
+          const previousDayHadInput = Object.fromEntries(config.groups.map((group) => [group.key, false]));
+          
+          rows.forEach((row) => {
+            const tr = document.createElement("tr");
+            const cells = config.groups.flatMap((group) => {
+              const totals = itemTotals(row.entries, ...group.aliases);
+              const previousBalance = balances[group.key] || 0;
+              const hasAnyEntry = row.entries.some((entry) => matchesItem(entry.item, group.aliases));
+              const hasRecordedBalance = hasAnyEntry && group.columns.includes("balance");
+              const currentBalance = hasRecordedBalance
+                ? sumItemEntries(row.entries, group.aliases, "balanceQty")
+                : previousBalance + totals.inQty - totals.usedQty - totals.wasteQty;
+              const calculatedUsed = Math.max(0, previousBalance + totals.inQty - currentBalance);
+              const showSundayCarry = row.weekday === 0 && previousDayHadInput[group.key];
+              balances[group.key] = currentBalance;
+              const renderedCells = group.columns.map((column) => renderReferenceCell(column, totals, currentBalance, calculatedUsed, {
+                hasAnyEntry,
+                showSundayCarry
+              }));
+              previousDayHadInput[group.key] = hasAnyEntry;
+              return renderedCells;
+            });
+            tr.innerHTML = `
+              <td><strong>${row.date.replaceAll("-", "/")}</strong></td>
+              ${cells.join("")}
+              <td><button class="tonal-btn" type="button" data-date="${row.date}"><span class="material-symbols-rounded">add</span>新增</button></td>
+            `;
+            tr.querySelector("[data-date]").addEventListener("click", () => openEntryDialog(room, row.date));
+            body.append(tr);
+          });
+          return table;
+        }
+
+        function renderSummary(target) {
+          target.append(renderTimeline({
+            year: state.year,
+            month: state.month,
+            onSelect: actions.setMonth,
+            onYearChange: actions.changeYear
+          }));
+          const summaryRows = buildContrastSummaryRows(state.year, state.month);
+          const table = tableShell("對比劑物料總盤點彙整 (Stock & Cabinet Inventory)", "匯出 Excel");
+          table.classList.add("reference-panel");
+          const exportBtn = table.querySelector("[data-add]");
+          exportBtn.innerHTML = `<span class="material-symbols-rounded">download</span>Excel`;
+          exportBtn.addEventListener("click", () => exportContrastCsv(summaryRows));
+          const toolbar = table.querySelector(".table-toolbar");
+          toolbar.querySelector("h3").innerHTML = `<span class="material-symbols-rounded">inventory_2</span>對比劑物料總盤點彙整 (Stock & Cabinet Inventory)`;
+          
+          const pdfBtn = el("button", "tonal-btn", `<span class="material-symbols-rounded">picture_as_pdf</span>PDF`);
+          pdfBtn.type = "button";
+          pdfBtn.addEventListener("click", () => window.print());
+          toolbar.append(pdfBtn);
+          
+          const saveReportBtn = el("button", "tonal-btn", `<span class="material-symbols-rounded">cloud_upload</span>儲存月紀錄`);
+          saveReportBtn.type = "button";
+          saveReportBtn.addEventListener("click", () => saveSummaryReport(summaryRows, state.year, state.month));
+          toolbar.append(saveReportBtn);
+          table.querySelector("table").classList.add("inventory-summary-table");
+          table.querySelector("thead").innerHTML = `
+            <tr>
+              <th>對比劑藥名</th>
+              <th>本月使用人數 (人)</th>
+              <th class="consumption-head">本月消耗瓶數 (瓶)</th>
+              <th>攝影室期末結存 (瓶)</th>
+              <th>申請量 (可直接修改)</th>
+              <th>鐵櫃結存 (可直接修改)</th>
+            </tr>
+          `;
+          const body = table.querySelector("tbody");
+          summaryRows.forEach((row) => {
+            body.insertAdjacentHTML("beforeend", `
+              <tr>
+                <td><strong>${row.name}</strong></td>
+                <td>${row.people}</td>
+                <td class="consumption-cell"><strong>${row.consumed}</strong></td>
+                <td><strong>${row.roomEnding}</strong></td>
+                <td><input class="inline-number" type="number" min="0" value="${row.requestQty}" aria-label="${row.name} 申請量"></td>
+                <td><input class="inline-number" type="number" min="0" value="${row.cabinetStock}" aria-label="${row.name} 鐵櫃結存"></td>
+              </tr>
+            `);
+          });
+          target.append(table);
+        }
+
+        function renderSyringeReferencePanel(room) {
+          const metrics = buildSyringeMetrics(state.year, state.month);
+          const panel = el("section", "syringe-panel", `
+            <div class="table-toolbar">
+              <h3><span class="material-symbols-rounded">syringe</span>高壓注射器針筒消耗明細與總計 (選定區間)</h3>
+              <div class="toolbar-actions">
+                <button class="tonal-btn" type="button" data-print-syringe><span class="material-symbols-rounded">picture_as_pdf</span>PDF</button>
+                <button class="tonal-btn" type="button" data-save-syringe><span class="material-symbols-rounded">cloud_upload</span>儲存月紀錄</button>
+              </div>
+            </div>
+            <div class="syringe-card-grid">
+              <div class="syringe-stat-card"><span>RCT 攝影室消耗</span><strong>${metrics.rct} 支</strong></div>
+              <div class="syringe-stat-card"><span>3F CT 攝影室消耗</span><strong>${metrics.ct3} 支</strong></div>
+              <div class="syringe-stat-card"><span>1F CT 攝影室消耗</span><strong>${metrics.ct1} 支</strong></div>
+              <div class="syringe-stat-card total"><span>高壓注射器針筒全院總計</span><strong>${metrics.total} 支</strong></div>
+            </div>
+          `);
+          panel.querySelector("[data-print-syringe]").addEventListener("click", () => window.print());
+          panel.querySelector("[data-save-syringe]").addEventListener("click", () => saveSyringeReport(metrics, state.year, state.month));
+          return panel;
+        }
+
+        function openEntryDialog(room, date) {
+          document.querySelector("#entryDialogTitle").textContent = `新增 ${room.name} 盤點`;
+          entryForm.dataset.roomId = room.id;
+          if (REFERENCE_TABLES[room.id]) {
+            entryForm.dataset.mode = "reference";
+            entryFormGrid.innerHTML = renderReferenceEntryFields(room, REFERENCE_TABLES[room.id], date);
+          } else {
+            entryForm.dataset.mode = "generic";
+            entryFormGrid.innerHTML = renderGenericEntryFields(room, date);
+          }
+          entryDialog.showModal();
+        }
+
+        entryForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const data = new FormData(entryForm);
+          const room = roomById(entryForm.dataset.roomId);
+          const entries = entryForm.dataset.mode === "reference"
+            ? buildReferenceEntries(room, REFERENCE_TABLES[room.id], data)
+            : [buildGenericEntry(room, data)];
+          const savedEntries = entries.map((entry) => upsertEntry(entry));
+          entryDialog.close();
+          render();
+          try {
+            const results = await Promise.allSettled(savedEntries.map((entry) => syncEntry(entry)));
+            const failed = results.filter((result) => result.status === "rejected").length;
+            toast(failed ? `已儲存 ${savedEntries.length} 筆，${failed} 筆待同步` : `已儲存並同步 ${savedEntries.length} 筆`);
+          } catch (error) {
+            toast(`已本機儲存，同步待重試：${error.message}`);
+          }
+        });
+
+        document.querySelectorAll("[data-close-dialog]").forEach((button) => {
+          button.addEventListener("click", () => button.closest("dialog").close());
+        });
+
+        function openSettings() {
+          const settings = loadSettings();
+          document.querySelector("#apiUrlInput").value = settings.apiUrl;
+          document.querySelector("#aiVoiceSelect").value = settings.aiVoice;
+          document.querySelector("#initialStockInputs").innerHTML = stockSettingItems().map((item) => `
+            <div class="settings-row">
+              <strong>${item.label}</strong>
+              <input name="stock:${item.key}" type="number" min="0" step="1" value="${settings.initialStocks[item.key] || 0}">
+            </div>
+          `).join("");
+          document.querySelector("#sheetMapInputs").innerHTML = ROOMS.map((room) => `
+            <div class="settings-row">
+              <strong>${room.name}</strong>
+              <input name="sheet:${room.id}" value="${settings.sheets[room.id] || room.sheetName}">
+            </div>
+          `).join("");
+          settingsDialog.showModal();
+        }
+
+        settingsForm.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const data = new FormData(settingsForm);
+          const settings = loadSettings();
+          settings.apiUrl = data.get("apiUrl") || "";
+          settings.aiVoice = data.get("aiVoice") || "Charon";
+          for (const [key, value] of data.entries()) {
+            if (key.startsWith("stock:")) settings.initialStocks[key.replace("stock:", "")] = Number(value || 0);
+            if (key.startsWith("sheet:")) settings.sheets[key.replace("sheet:", "")] = value || "";
+          }
+          saveSettings(settings);
+          settingsDialog.close();
+          render();
+          toast("設定已儲存");
+        });
+
+        async function syncCurrentRoom() {
+          const syncBtnIcon = document.querySelector("#syncBtn .material-symbols-rounded");
+          if (syncBtnIcon) syncBtnIcon.classList.add("spinning");
+
+          try {
+            const settings = loadSettings();
+            if (!settings.apiUrl) {
+              throw new Error("尚未設定 Google Sheets API 網址，請先至設定完成配置。");
+            }
+
+            toast("🔄 步驟 1/6: 正在自 Google Sheets 下載最新雲端資料...");
+            const syncTargets = operationalRooms();
+            const freshRawDataMap = new Map();
+
+            await Promise.all(syncTargets.map(async (room) => {
+              const url = new URL(settings.apiUrl);
+              url.searchParams.set("action", "list");
+              url.searchParams.set("sheet", settings.sheets[room.id]);
+              url.searchParams.set("_", `${Date.now()}-${room.id}-${Math.random()}`);
+              
+              const response = await fetch(url, { cache: "no-store" });
+              if (!response.ok) {
+                throw new Error(`${room.name} 資料下載失敗 (HTTP ${response.status})`);
+              }
+              const payload = await response.json();
+              const rows = Array.isArray(payload) ? payload : payload.rows || [];
+              freshRawDataMap.set(room.id, rows);
+            }));
+
+            toast("🧹 步驟 2/6: 正在徹底清除 App 目前記憶體中的舊資料快取...");
+            localStorage.removeItem("radiology_inventory_entries_v1");
+
+            toast("🏗️ 步驟 3/6: 正在重組與分析並建立乾淨的資料模型...");
+            const reconstitutedEntries = [];
+            for (const room of syncTargets) {
+              const rawRows = freshRawDataMap.get(room.id) || [];
+              const normalized = normalizeSheetRows(room.id, rawRows);
+              reconstitutedEntries.push(...normalized);
+            }
+            replaceAllEntries(reconstitutedEntries);
+
+            toast("🏢 步驟 4/6: 正在重新同步各攝影室特定狀態與公式結存...");
+            syncTargets.forEach((room) => {
+              calculateDailyRows(room.id, state.year, state.month);
+            });
+
+            toast("📊 步驟 5/6: 正在重新計算本期總彙整統計與物料圖表...");
+            calculateSummary(syncTargets.map(r => r.id), state.year, state.month);
+
+            toast("🎨 步驟 6/6: 同步成功！正在重新繪製前端所有視圖...");
+            render();
+
+            toast("✅ 全裝置 Google Sheets 雲端資料同步完成！");
+          } catch (error) {
+            console.error("Sync error details:", error);
+            toast(`❌ 同步失敗: ${error.message}`);
+          } finally {
+            if (syncBtnIcon) syncBtnIcon.classList.remove("spinning");
+          }
+        }
+
+        return { render, openSettings, syncCurrentRoom };
+      }
+
+      async function saveSummaryReport(rows, year, monthValue) {
+        const settings = loadSettings();
+        const month = reportMonthLabel(year, monthValue);
+        const headers = ["recordedAt", "month", "item", "people", "consumed", "roomEnding", "requestQty", "cabinetStock"];
+        const payloadRows = rows.map((row) => ({
+          recordedAt: new Date().toISOString(),
+          month,
+          item: row.name,
+          people: row.people,
+          consumed: row.consumed,
+          roomEnding: row.roomEnding,
+          requestQty: row.requestQty,
+          cabinetStock: row.cabinetStock
+        }));
+        try {
+          await appendReportRows({ sheet: settings.sheets.summary || "Summary", headers, rows: payloadRows });
+          toast(`已追加儲存 ${month} 總盤點月紀錄`);
+        } catch (error) {
+          toast(error.message);
+        }
+      }
+
+      async function saveSyringeReport(metrics, year, monthValue) {
+        const settings = loadSettings();
+        const month = reportMonthLabel(year, monthValue);
+        const headers = ["recordedAt", "month", "room", "usedQty"];
+        const rows = [
+          { recordedAt: new Date().toISOString(), month, room: "RCT", usedQty: metrics.rct },
+          { recordedAt: new Date().toISOString(), month, room: "3F CT", usedQty: metrics.ct3 },
+          { recordedAt: new Date().toISOString(), month, room: "1F CT", usedQty: metrics.ct1 },
+          { recordedAt: new Date().toISOString(), month, room: "高壓注射器針筒全院總計", usedQty: metrics.total }
+        ];
+        try {
+          await appendReportRows({ sheet: settings.sheets.syringe || "Sheet J", headers, rows });
+          toast(`已追加儲存 ${month} 高壓注射器針筒月紀錄`);
+        } catch (error) {
+          toast(error.message);
+        }
+      }
+
+      function reportMonthLabel(year, monthValue) {
+        return `${year}-${String(monthValue).padStart(2, "0")}`;
+      }
+
+      function tableShell(title, actionText) {
+        return el("section", "table-card", `
+          <div class="table-toolbar">
+            <h3>${title}</h3>
+            <button class="tonal-btn" type="button" data-add><span class="material-symbols-rounded">add</span>${actionText}</button>
+          </div>
+          <div class="table-wrap"><table><thead></thead><tbody></tbody></table></div>
+        `);
+      }
+
+      function renderReferenceEntryFields(room, config, date) {
+        return `
+          <label>日期 <input name="date" type="date" value="${date}" required></label>
+          <label class="span-2">備註 <textarea name="note" rows="2" placeholder="交班、盤差、補充說明"></textarea></label>
+          <div class="entry-groups span-2">
+            ${config.groups.map((group) => `
+              <section class="entry-group">
+                <h3>${room.name} ${group.label}</h3>
+                <div class="entry-group-grid">
+                  ${group.columns.includes("people") ? entryNumberField(`${group.key}:peopleQty`, "人數") : ""}
+                  ${group.columns.includes("in") ? entryNumberField(`${group.key}:inQty`, "補充") : ""}
+                  ${group.columns.includes("balance") ? entryNumberField(`${group.key}:balanceQty`, "結存") : ""}
+                  ${group.columns.includes("dose") ? entryNumberField(`${group.key}:usedQty`, "用量") : ""}
+                  ${group.columns.includes("refill") ? entryNumberField(`${group.key}:inQty`, "補充數") : ""}
+                </div>
+              </section>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function renderGenericEntryFields(room, date) {
+        return `
+          <label>日期 <input name="date" type="date" value="${date}" required></label>
+          <label>品項 <input name="item" list="itemList" value="${room.items[0] || ""}" placeholder="Omnipaque" required></label>
+          <datalist id="itemList">${room.items.map((item) => `<option value="${item}"></option>`).join("")}</datalist>
+          <label>人數 <input name="peopleQty" type="number" min="0" step="1" value=""></label>
+          <label>補充 <input name="inQty" type="number" min="0" step="1" value=""></label>
+          <label>當日結存 <input name="balanceQty" type="number" min="0" step="1" value=""></label>
+          <label>報廢 <input name="wasteQty" type="number" min="0" step="1" value=""></label>
+          <label class="span-2">備註 <textarea name="note" rows="3" placeholder="交班、盤差、補充說明"></textarea></label>
+        `;
+      }
+
+      function entryNumberField(name, label) {
+        return `<label>${label}<input name="${name}" type="number" min="0" step="1" value=""></label>`;
+      }
+
+      function buildReferenceEntries(room, config, data) {
+        const date = data.get("date");
+        const note = data.get("note") || "";
+        return config.groups
+          .map((group) => {
+            const values = {
+              peopleQty: data.get(`${group.key}:peopleQty`),
+              inQty: data.get(`${group.key}:inQty`),
+              balanceQty: data.get(`${group.key}:balanceQty`),
+              usedQty: data.get(`${group.key}:usedQty`)
+            };
+            return {
+              roomId: room.id,
+              date,
+              item: group.label,
+              peopleQty: numberOrZero(values.peopleQty),
+              inQty: numberOrZero(values.inQty),
+              usedQty: numberOrZero(values.usedQty),
+              balanceQty: numberOrZero(values.balanceQty),
+              wasteQty: 0,
+              note,
+              touched: {
+                peopleQty: group.columns.includes("people"),
+                inQty: group.columns.includes("in") || group.columns.includes("refill"),
+                balanceQty: group.columns.includes("balance"),
+                usedQty: group.columns.includes("dose"),
+                note: note !== ""
+              }
+            };
+          })
+      }
+
+      function buildGenericEntry(room, data) {
+        return {
+          roomId: room.id,
+          date: data.get("date"),
+          item: data.get("item"),
+          peopleQty: data.get("peopleQty"),
+          inQty: data.get("inQty"),
+          usedQty: 0,
+          balanceQty: data.get("balanceQty"),
+          wasteQty: data.get("wasteQty"),
+          note: data.get("note"),
+          touched: {
+            peopleQty: true,
+            inQty: true,
+            balanceQty: true,
+            wasteQty: true,
+            note: (data.get("note") || "") !== ""
+          }
+        };
+      }
+
+      function numberOrZero(value) {
+        return value === null || value === "" ? 0 : Number(value);
+      }
+
+      function resolveGroupOpeningStock(roomId, group, year, month) {
+        const settings = loadSettings();
+        const defaultStock = getInitialStock(settings, roomId, group.key);
+        if (year < 2026 || (year === 2026 && month <= 7)) return defaultStock;
+
+        const { year: previousYear, month: previousMonth } = previousMonthOf(year, month);
+        const previousMonthEntries = entriesFor(roomId, previousYear, previousMonth)
+          .filter((entry) => matchesItem(entry.item, group.aliases));
+        if (!previousMonthEntries.length) return defaultStock;
+
+        let balance = resolveGroupOpeningStock(roomId, group, previousYear, previousMonth);
+        for (let day = 1; day <= daysInMonth(previousYear, previousMonth); day += 1) {
+          const date = isoDate(previousYear, previousMonth, day);
+          const dayEntries = previousMonthEntries.filter((entry) => entry.date === date);
+          if (!dayEntries.length) continue;
+          const totals = itemTotals(dayEntries, ...group.aliases);
+          balance = group.columns.includes("balance")
+            ? sumEntries(dayEntries, "balanceQty")
+            : balance + totals.inQty - totals.usedQty - totals.wasteQty;
+        }
+        return balance;
+      }
+
+      function previousMonthOf(year, month) {
+        if (month === 1) return { year: year - 1, month: 12 };
+        return { year, month: month - 1 };
+      }
+
+      const REFERENCE_TABLES = {
+        ct1: {
+          groups: [
+            referenceGroup("omni", "Omnipaque", ["Omnipaque"], ["people", "in", "balance", "used"]),
+            referenceGroup("visipague", "Visipague", ["Visipague", "Visipaque"], ["people"]),
+            referenceGroup("injector", "高壓注射器針筒", ["高壓注射器針筒", "注射器", "針筒", "高壓針筒"], ["dose"]),
+            referenceGroup("syringeRefill", "高壓注射器針筒補充", ["高壓注射器針筒補充", "針筒補充"], ["refill"])
+          ]
+        },
+        ct3: {
+          groups: [
+            referenceGroup("omni", "Omnipaque", ["Omnipaque"], ["people", "in", "balance", "used"]),
+            referenceGroup("visipague", "Visipague", ["Visipague", "Visipaque"], ["people"]),
+            referenceGroup("injector", "高壓注射器針筒", ["高壓注射器針筒", "注射器", "針筒", "高壓針筒"], ["dose"])
+          ]
+        },
+        rct: {
+          groups: [
+            referenceGroup("omni", "Omnipaque", ["Omnipaque"], ["people", "in", "balance", "used"]),
+            referenceGroup("ultravist370", "Ultravist 370", ["Ultravist370", "Ultravist 370"], ["people", "in", "balance", "used"]),
+            referenceGroup("visipague", "Visipague", ["Visipague", "Visipaque"], ["people"]),
+            referenceGroup("injector", "高壓注射器針筒", ["高壓注射器針筒", "注射器", "針筒", "高壓針筒"], ["dose"])
+          ]
+        },
+        mri1: {
+          groups: [
+            referenceGroup("gadovist", "Gadovist", ["Gadovist", "Gadolinium"], ["people", "in", "balance", "used"]),
+            referenceGroup("dotarem", "Dotarem", ["Dotarem"], ["people", "in", "balance", "used"]),
+            referenceGroup("primovist", "Primovist", ["Primovist", "Eovist"], ["people"])
+          ]
+        },
+        mri3: {
+          groups: [
+            referenceGroup("gadovist", "Gadovist", ["Gadovist", "Gadolinium"], ["people", "in", "balance", "used"]),
+            referenceGroup("dotarem", "Dotarem", ["Dotarem"], ["people", "in", "balance", "used"]),
+            referenceGroup("primovist", "Primovist", ["Primovist", "Eovist"], ["people"])
+          ]
+        },
+        mri3t: {
+          groups: [
+            referenceGroup("gadovist", "Gadovist", ["Gadovist", "Gadolinium"], ["people", "in", "balance", "used"]),
+            referenceGroup("dotarem", "Dotarem", ["Dotarem"], ["people", "in", "balance", "used"]),
+            referenceGroup("primovist", "Primovist", ["Primovist", "Eovist"], ["people"])
+          ]
+        },
+        special: {
+          groups: [
+            referenceGroup("omni", "Omnipaque", ["Omnipaque"], ["people", "in", "balance", "used"]),
+            referenceGroup("ultravist300", "Ultravist 300", ["Ultravist300", "Ultravist 300"], ["people", "in", "balance", "used"]),
+            referenceGroup("barium", "鋇劑 (Barium)", ["Barium", "鋇劑"], ["people", "in", "balance", "used"]),
+            referenceGroup("ultravist370", "Ultravist 370", ["Ultravist370", "Ultravist 370"], ["people", "in", "balance", "used"])
+          ]
+        },
+        vascular: {
+          groups: [
+            referenceGroup("omni", "Omnipaque", ["Omnipaque"], ["people", "in", "balance", "used"]),
+            referenceGroup("ultravist370", "Ultravist 370", ["Ultravist370", "Ultravist 370"], ["people", "in", "balance", "used"]),
+            referenceGroup("visipague", "Visipague", ["Visipague", "Visipaque"], ["people"])
+          ]
+        },
+        ivp: {
+          groups: [
+            referenceGroup("ultravist300", "Ultravist 300", ["Ultravist300", "Ultravist 300"], ["people", "in", "balance", "used"])
+          ]
+        }
+      };
+
+      function referenceGroup(key, label, aliases, columns) {
+        return { key, label, aliases, columns };
+      }
+
+      function stockSettingItems() {
+        return Object.entries(REFERENCE_TABLES).flatMap(([roomId, config]) => {
+          const room = roomById(roomId);
+          return config.groups
+            .filter((group) => group.columns.includes("balance"))
+            .map((group) => ({
+              key: stockKey(roomId, group.key),
+              label: `${room.name} ${group.label}`
+            }));
+        });
+      }
+
+      function columnLabel(column) {
+        return {
+          people: "人數",
+          in: "補充",
+          balance: "結存",
+          used: "使用",
+          dose: "用量",
+          refill: "補充數"
+        }[column] || column;
+      }
+
+      function columnClass(column) {
+        return column === "used" ? "usage-head" : "";
+      }
+
+      function renderReferenceCell(column, totals, balance, calculatedUsed, display = {}) {
+        const shouldShowValue = display.hasAnyEntry || (column === "balance" && display.showSundayCarry);
+        if (!shouldShowValue) {
+          const className = column === "used" ? " class=\"usage-cell\"" : "";
+          return `<td${className}></td>`;
+        }
+
+        const value = {
+          people: totals.peopleQty,
+          in: totals.inQty,
+          balance,
+          used: calculatedUsed,
+          dose: totals.usedQty,
+          refill: totals.inQty
+        }[column] ?? 0;
+        const strong = column === "balance" || column === "used";
+        const className = column === "used" ? " class=\"usage-cell\"" : "";
+        return `<td${className}>${strong ? `<strong>${value}</strong>` : value}</td>`;
+      }
+
+      const CONTRAST_SUMMARY_ITEMS = [
+        { name: "Omnipaque", aliases: ["omnipaque"] },
+        { name: "Ultravist 300", aliases: ["ultravist300", "ultravist 300", "優視特300"] },
+        { name: "Ultravist 370", aliases: ["ultravist370", "ultravist 370"] },
+        { name: "Visipague 320", aliases: ["visipague320", "visipague", "visipaque"] },
+        { name: "鋇劑 (Barium)", aliases: ["barium", "鋇劑"] },
+        { name: "Gadovist", aliases: ["gadovist", "gadolinium"] },
+        { name: "Dotarem", aliases: ["dotarem"] },
+        { name: "Primovist", aliases: ["primovist", "eovist"] }
+      ];
+
+      function buildContrastSummaryRows(year, month) {
+        return CONTRAST_SUMMARY_ITEMS.map((definition) => {
+          const stats = summarizeContrastItem(definition, year, month);
+          return {
+            name: definition.name,
+            people: stats.peopleQty,
+            consumed: stats.usedQty,
+            roomEnding: stats.endingStock,
+            requestQty: 0,
+            cabinetStock: 0
+          };
+        });
+      }
+
+      function buildSyringeMetrics(year, month) {
+        const targetRooms = ["rct", "ct3", "ct1"];
+        const values = Object.fromEntries(targetRooms.map((roomId) => {
+          const entries = filterEntriesByAliases(entriesFor(roomId, year, month), ["高壓注射器針筒", "注射器", "針筒", "高壓針筒"]);
+          return [roomId, sumEntries(entries, "usedQty")];
+        }));
+        return {
+          rct: values.rct || 0,
+          ct3: values.ct3 || 0,
+          ct1: values.ct1 || 0,
+          total: (values.rct || 0) + (values.ct3 || 0) + (values.ct1 || 0)
+        };
+      }
+
+      function filterEntriesByAliases(entries, aliases) {
+        return entries.filter((entry) => matchesItem(entry.item, aliases));
+      }
+
+      function matchesItem(itemName, aliases) {
+        const item = normalizeItem(itemName);
+        return aliases.some((alias) => item.includes(normalizeItem(alias)));
+      }
+
+      function normalizeItem(value) {
+        return String(value || "").toLowerCase().replaceAll(" ", "");
+      }
+
+      function sumEntries(entries, key) {
+        return entries.reduce((total, entry) => total + Number(entry[key] || 0), 0);
+      }
+
+      function sumItemEntries(entries, aliases, key) {
+        return sumEntries(filterEntriesByAliases(entries, aliases), key);
+      }
+
+      function summarizeContrastItem(definition, year, month) {
+        let peopleQty = 0;
+        let usedQty = 0;
+        let endingStock = 0;
+        operationalRooms()
+          .filter((room) => room.type !== "syringe" && room.type !== "ai_copilot")
+          .forEach((room) => {
+            const config = REFERENCE_TABLES[room.id];
+            if (!config) return;
+            config.groups
+              .filter((group) => group.columns.includes("balance") && group.aliases.some((alias) => definition.aliases.map(normalizeItem).includes(normalizeItem(alias))))
+              .forEach((group) => {
+                const rows = calculateDailyRows(room.id, year, month);
+                const settings = loadSettings();
+                let balance = getInitialStock(settings, room.id, group.key);
+                rows.forEach((row) => {
+                  const totals = itemTotals(row.entries, ...group.aliases);
+                  peopleQty += totals.peopleQty;
+                  const hasRecordedBalance = row.entries.some((entry) => matchesItem(entry.item, group.aliases)) && group.columns.includes("balance");
+                  const currentBalance = hasRecordedBalance
+                    ? sumItemEntries(row.entries, group.aliases, "balanceQty")
+                    : balance + totals.inQty - totals.usedQty - totals.wasteQty;
+                  usedQty += Math.max(0, balance + totals.inQty - currentBalance);
+                  balance = currentBalance;
+                });
+                endingStock += balance;
+              });
+          });
+        return { peopleQty, usedQty, endingStock };
+      }
+
+      function exportContrastCsv(rows) {
+        const header = ["對比劑藥名", "本月使用人數 (人)", "本月消耗瓶數 (瓶)", "攝影室期末結存 (瓶)", "申請量", "鐵櫃結存"];
+        const csv = [header, ...rows.map((row) => [
+          row.name,
+          row.people,
+          row.consumed,
+          row.roomEnding,
+          row.requestQty,
+          row.cabinetStock
+        ])].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
+        const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `對比劑物料總盤點彙整.csv`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+
+      function itemTotals(entries, ...tokens) {
+        const matched = entries.filter((entry) => {
+          const item = String(entry.item || "").toLowerCase();
+          return tokens.some((token) => item.includes(String(token).toLowerCase()));
+        });
+        return {
+          peopleQty: matched.reduce((total, entry) => total + Number(entry.peopleQty || 0), 0),
+          inQty: matched.reduce((total, entry) => total + Number(entry.inQty || 0), 0),
+          usedQty: matched.reduce((total, entry) => total + Number(entry.usedQty || 0), 0),
+          wasteQty: matched.reduce((total, entry) => total + Number(entry.wasteQty || 0), 0)
+        };
+      }
+
+      function toast(message) {
+        const node = document.querySelector("#toast");
+        node.textContent = message;
+        node.classList.add("show");
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(() => node.classList.remove("show"), 2800);
+      }
+
+      function el(tag, className, html = "") {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        node.innerHTML = html;
+        return node;
+      }
+
       document.addEventListener("DOMContentLoaded", () => {
         const state = {
           viewMode: "mobile",
@@ -171,14 +2653,10 @@
 
         ui.render();
 
-        // 核心修正：當頁面開啟或重新整理時，自動連線雲端最新盤點數據，免去手動按同步
+        // 智慧型自動修復：當 B 平台重新整理時，自動向試算表發起同步請求
         const settings = loadSettings();
         if (settings.apiUrl) {
-          toast("🔄 正在連線雲端同步最新盤點數據...");
-          ui.syncCurrentRoom().catch((err) => {
-            console.warn("初始同步失敗，正在採用本機暫存資料:", err);
-            toast("⚠️ 雲端連線失敗，已自動載入本機離線緩存");
-          });
+          ui.syncCurrentRoom();
         }
       });
     </script>
