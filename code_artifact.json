@@ -1,0 +1,22 @@
+{
+  "name": "放射科對比劑智慧盤點系統",
+  "short_name": "放射盤點",
+  "description": "提供放射科室對比劑與耗材物料之智慧試算、自動備份與定時通知盤點管理系統。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://placehold.co/192x192/2563eb/ffffff?text=放射盤點",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://placehold.co/512x512/2563eb/ffffff?text=放射盤點",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
