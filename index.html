@@ -12,7 +12,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,0,0&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     
-    <!-- 使用 Tailwind CSS 提昇 UI 與 AI 聊天介面美觀性 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -250,6 +249,10 @@
 
       body[data-view-mode="desktop"] .icon-grid {
         grid-template-columns: repeat(3, 1fr);
+      }
+
+      .flex-1-item {
+        flex: 1;
       }
 
       .app-card {
@@ -724,7 +727,39 @@
     </style>
   </head>
   <body>
-    <div id="app" class="app-shell">
+    <!-- 入口安全驗證介面 Overlay (預設顯示) -->
+    <div id="loginOverlay" class="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-100 p-4 transition-all duration-300">
+      <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+        <!-- 驗證標題區 -->
+        <div class="bg-gradient-to-r from-blue-600 to-blue-800 p-6 text-white text-center">
+          <span class="material-symbols-rounded text-5xl mb-2">admin_panel_settings</span>
+          <h2 class="text-xl font-bold tracking-wide">放射科盤點系統驗證</h2>
+          <p class="text-xs opacity-85 mt-1.5">請輸入醫事人員帳號與密碼以連入系統</p>
+        </div>
+        <!-- 驗證表單區 -->
+        <form id="loginForm" class="p-6 space-y-4">
+          <div id="loginError" class="hidden text-sm bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 border border-red-200">
+            <span class="material-symbols-rounded text-lg">error</span>
+            <span>帳號或密碼輸入錯誤，請重新確認！</span>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700">醫事帳號 (Account)</label>
+            <input type="text" id="username" required placeholder="請輸入醫事人員代號" class="mt-1 w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-sm transition" autocomplete="username">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700">登入密碼 (Password)</label>
+            <input type="password" id="password" required placeholder="請輸入密碼" class="mt-1 w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-sm transition" autocomplete="current-password">
+          </div>
+          <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition shadow-md hover:shadow-lg flex items-center justify-center gap-1.5">
+            <span class="material-symbols-rounded text-lg">key</span>
+            驗證並進入系統
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 主應用程式主體 (登入成功前預設隱藏) -->
+    <div id="app" class="app-shell hidden">
       <header class="top-app-bar">
         <button id="backBtn" class="icon-btn is-hidden" type="button" aria-label="返回首頁">
           <span class="material-symbols-rounded">arrow_back</span>
@@ -738,6 +773,9 @@
         </button>
         <button id="settingsBtn" class="icon-btn" type="button" aria-label="設定">
           <span class="material-symbols-rounded">settings</span>
+        </button>
+        <button id="logoutBtn" class="icon-btn" type="button" aria-label="登出">
+          <span class="material-symbols-rounded">logout</span>
         </button>
       </header>
 
@@ -763,7 +801,6 @@
       </form>
     </dialog>
 
-    <!-- 系統設定 Dialog -->
     <dialog id="settingsDialog" class="app-dialog wide-dialog">
       <form id="settingsForm" method="dialog">
         <div class="dialog-head">
@@ -794,6 +831,26 @@
           <p class="helper">此設定將套用至「聽取語音簡報」功能。Gemini TTS 支援多語系，本系統已內建中文優化。</p>
         </section>
         <section class="settings-section">
+          <h3>手機與瀏覽器通知設定 (Web Notifications)</h3>
+          <div class="flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-slate-700">未完成盤點每日提醒</span>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="notificationToggle" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between" style="gap: 8px;">
+              <span class="text-sm font-medium text-slate-700">每日推播提醒時間</span>
+              <input type="time" id="notificationTime" name="notificationTime" class="p-1.5 border rounded border-slate-300 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" style="width: auto;">
+            </div>
+            <p class="helper">當偵測到目前月份有攝影室「未完成盤點」時，會在設定的時間（如每日 17:15）或開啟系統時，自動發送推播通知至您的手機（iOS 裝置請參閱下方說明設定）。</p>
+            <button type="button" id="testNotificationBtn" class="tonal-btn mt-2 justify-center w-full md:w-auto self-start">
+              <span class="material-symbols-rounded">notifications_active</span>測試發送推播通知
+            </button>
+          </div>
+        </section>
+        <section class="settings-section">
           <h3>月初期初庫存</h3>
           <div id="initialStockInputs" class="settings-list"></div>
         </section>
@@ -811,26 +868,28 @@
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script type="module">
-      // 宣告系統科室與相應品項
+      // 宣告系統科室與相應品項 (已將 Visipague320 修正為 Visipague，新增各 MRI 攝影室之 MRI注射器)
       export const ROOMS = [
-        { id: "ct1", name: "1F CT", sheetName: "Sheet A", icon: "contrast", accent: "#2563eb", items: ["Omnipaque", "Visipague320", "高壓注射器針筒"] },
-        { id: "ct3", name: "3F CT", sheetName: "Sheet B", icon: "scanner", accent: "#0891b2", items: ["Omnipaque", "Visipague320", "高壓注射器針筒"] },
-        { id: "rct", name: "RCT", sheetName: "Sheet C", icon: "monitor_heart", accent: "#7c3aed", items: ["Omnipaque", "Ultravist370", "Visipague320", "高壓注射器針筒"] },
-        { id: "mri1", name: "1F MRI", sheetName: "Sheet D", icon: "magnet", accent: "#0f766e", items: ["Gadolinium", "Eovist", "生理食鹽水"] },
-        { id: "mri3", name: "3F MRI", sheetName: "Sheet E", icon: "view_in_ar", accent: "#16a34a", items: ["Gadolinium", "Eovist", "生理食鹽水"] },
-        { id: "mri3t", name: "3T MRI", sheetName: "Sheet F", icon: "sensors", accent: "#ca8a04", items: ["Gadolinium", "Primovist", "生理食鹽水"] },
+        { id: "ct1", name: "1F CT", sheetName: "Sheet A", icon: "contrast", accent: "#2563eb", items: ["Omnipaque", "Visipague", "高壓注射器針筒"] },
+        { id: "ct3", name: "3F CT", sheetName: "Sheet B", icon: "scanner", accent: "#0891b2", items: ["Omnipaque", "Visipague", "高壓注射器針筒"] },
+        { id: "rct", name: "RCT", sheetName: "Sheet C", icon: "monitor_heart", accent: "#7c3aed", items: ["Omnipaque", "Ultravist370", "Visipague", "高壓注射器針筒"] },
+        { id: "mri1", name: "1F MRI", sheetName: "Sheet D", icon: "magnet", accent: "#0f766e", items: ["Gadolinium", "Eovist", "生理食鹽水", "MRI注射器"] },
+        { id: "mri3", name: "3F MRI", sheetName: "Sheet E", icon: "view_in_ar", accent: "#16a34a", items: ["Gadolinium", "Eovist", "生理食鹽水", "MRI注射器"] },
+        { id: "mri3t", name: "3T MRI", sheetName: "Sheet F", icon: "sensors", accent: "#ca8a04", items: ["Gadolinium", "Primovist", "生理食鹽水", "MRI注射器"] },
         { id: "special", name: "特殊", sheetName: "Sheet G", icon: "biotech", accent: "#db2777", items: ["Ultravist300", "Ultravist370", "Barium", "Omnipaque"] },
-        { id: "vascular", name: "血管", sheetName: "Sheet H", icon: "bloodtype", accent: "#dc2626", items: ["Omnipaque", "Ultravist370", "Visipague320", "高壓注射器針筒"] },
+        { id: "vascular", name: "血管", sheetName: "Sheet H", icon: "bloodtype", accent: "#dc2626", items: ["Omnipaque", "Ultravist370", "Visipague", "高壓注射器針筒"] },
         { id: "ivp", name: "IVP", sheetName: "Sheet I", icon: "science", accent: "#9333ea", items: ["Ultravist300"] },
         { id: "summary", name: "總盤點彙整", sheetName: "Summary", icon: "inventory_2", accent: "#4f46e5", type: "summary", items: [] },
-        { id: "syringe", name: "高壓注射器針筒", sheetName: "Sheet J", icon: "vaccines", accent: "#0d9488", type: "syringe", items: ["高壓注射器針筒", "延長管", "三通閥"] },
+        { id: "syringe", name: "高壓注射器針筒", sheetName: "Sheet J", icon: "vaccines", accent: "#0d9488", type: "syringe", items: ["高壓注射器針筒", "延長管", "三通閥", "MRI注射器"] },
         { id: "ai_copilot", name: "AI 智慧臨床助理", sheetName: "AICopilot", icon: "psychology", accent: "#f97316", type: "ai_copilot", items: [] }
       ];
 
-      // 預設期初設定與基本狀態
+      // 預設期初設定與基本狀態 (已更新 GAS API 為新網址，期初 Visipague 欄位正常對接)
       export const DEFAULT_SETTINGS = {
-        apiUrl: "https://script.google.com/macros/s/AKfycbyzlRGnF0LrTkGGLj1j2gpd7RX95EgEd88kP40XFNJJTCQCGa6uB02ypOhpyiy8t1Iv/exec",
+        apiUrl: "https://script.google.com/macros/s/AKfycbw4qhN0C3RzBDwmLsYiEsxFUW_y5yQla_viqPa4aaKCRz-Ef53vAA5KCir4yIVThp9QCQ/exec",
         aiVoice: "Charon",
+        enableNotifications: false, // 預設關閉通知
+        notificationTime: "17:15",   // 預設提醒時間
         sheets: Object.fromEntries(ROOMS.map((room) => [room.id, room.sheetName])),
         initialStocks: {
           "rct:omni": 26,
@@ -876,6 +935,8 @@
             ...parsed,
             apiUrl: parsed.apiUrl || DEFAULT_SETTINGS.apiUrl,
             aiVoice: parsed.aiVoice || DEFAULT_SETTINGS.aiVoice,
+            enableNotifications: parsed.enableNotifications ?? DEFAULT_SETTINGS.enableNotifications,
+            notificationTime: parsed.notificationTime || DEFAULT_SETTINGS.notificationTime,
             sheets: { ...DEFAULT_SETTINGS.sheets, ...(parsed.sheets || {}) },
             initialStocks: normalizeInitialStocks(parsed.initialStocks || {})
           };
@@ -959,7 +1020,8 @@
           wasteQty: Number(entry.wasteQty || 0),
           note: entry.note || "",
           touched: entry.touched || null,
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
+          user: sessionStorage.getItem("radiology_user") || "" // 同步儲存當前操作的使用者帳號
         };
         const index = entries.findIndex((row) =>
           row.id === next.id ||
@@ -1108,6 +1170,103 @@
         return String(value || "").trim().toLowerCase();
       }
 
+      // 請求手機與瀏覽器推播權限
+      export async function requestNotificationPermission() {
+        if (!("Notification" in window)) {
+          toast("⚠️ 您的手機或瀏覽器不支援 Web Notification 通知功能");
+          return false;
+        }
+        if (Notification.permission === "granted") return true;
+        const permission = await Notification.requestPermission();
+        return permission === "granted";
+      }
+
+      // 發送手機原生橫幅推播通知
+      export function sendLocalNotification(title, body) {
+        if (!("Notification" in window) || Notification.permission !== "granted") return;
+        try {
+          new Notification(title, {
+            body: body,
+            icon: "https://placehold.co/128x128/2563eb/ffffff?text=放射盤點",
+            badge: "https://placehold.co/128x128/2563eb/ffffff?text=放射盤點",
+            vibrate: [200, 100, 200]
+          });
+        } catch (e) {
+          // 部分行動版 Chrome / PWA 回退機制
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+              registration.showNotification(title, {
+                body: body,
+                icon: "https://placehold.co/128x128/2563eb/ffffff?text=放射盤點",
+                badge: "https://placehold.co/128x128/2563eb/ffffff?text=放射盤點",
+                vibrate: [200, 100, 200]
+              });
+            });
+          }
+        }
+      }
+
+      // 自動檢查所有攝影室地點與缺漏日期，並發送統整報告
+      export function checkAndTriggerIncompleteAlert(force = false) {
+        const settings = loadSettings();
+        if (!settings.enableNotifications && !force) return;
+        if (Notification.permission !== "granted") return;
+
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth() + 1;
+        const todayStr = `${year}-${String(month).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+        // 避免一天之內重複推送相同提醒
+        if (!force) {
+          const lastNotify = localStorage.getItem("radiology_last_notify_date");
+          if (lastNotify === todayStr) return;
+        }
+
+        const rooms = operationalRooms();
+        const uncompletedList = [];
+
+        rooms.forEach(room => {
+          const alertInfo = calculateAlert(room.id, year, month, today);
+          if (!alertInfo.complete && alertInfo.missingCount > 0) {
+            uncompletedList.push({
+              name: room.name,
+              missingCount: alertInfo.missingCount,
+              missingDays: alertInfo.missingDays
+            });
+          }
+        });
+
+        if (uncompletedList.length > 0) {
+          const title = "⚠️ 放射盤點未完成警告";
+          const body = uncompletedList
+            .map(item => `${item.name}：缺 ${item.missingCount} 天 (日期: ${item.missingDays.slice(0, 5).join(", ")}日${item.missingDays.length > 5 ? "..." : ""})`)
+            .join("\n");
+          sendLocalNotification(title, body);
+
+          // 紀錄今日已成功提醒
+          if (!force) {
+            localStorage.setItem("radiology_last_notify_date", todayStr);
+          }
+        }
+      }
+
+      // 啟動定時調度器 (每分鐘自動檢測是否到了設定時間 17:15)
+      export function initNotificationScheduler() {
+        setInterval(() => {
+          const settings = loadSettings();
+          if (!settings.enableNotifications) return;
+
+          const now = new Date();
+          const currentHourMin = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+          // 比對設定時間（如 17:15）
+          if (currentHourMin === settings.notificationTime) {
+            checkAndTriggerIncompleteAlert(false);
+          }
+        }, 60000); // 每一分鐘輪詢一次
+      }
+
       export async function fetchRoomEntries(roomId) {
         const settings = loadSettings();
         if (!settings.apiUrl) return [];
@@ -1142,39 +1301,75 @@
         return entries;
       }
 
-      export async function syncEntry(entry) {
+      /**
+       * 新增：合併多筆盤點資料為單一結構發送（優化傳輸效能、杜絕重疊提交的競態條件與多餘行寫入）
+       * 1. 確保同一天同一間攝影室的所有數據被整合成一列傳輸。
+       * 2. 「帳號名稱」放置在整體欄位結構的最後一個。
+       */
+      export async function syncEntries(entries) {
+        if (!entries || entries.length === 0) return { offline: true };
         const settings = loadSettings();
         if (!settings.apiUrl) return { offline: true };
+
+        const firstEntry = entries[0];
+        const roomId = firstEntry.roomId;
+        const sheetName = settings.sheets[roomId];
+
+        // 建立整合型欄位，以「日期」作為起頭首欄
+        const combinedFields = {
+          "日期": normalizeDateKey(firstEntry.date)
+        };
+
+        // 整合當日各子項目備註 (去重合併)
+        const notes = entries.map(e => e.note).filter(Boolean);
+        if (notes.length > 0) {
+          combinedFields["備註"] = [...new Set(notes)].join("；");
+        }
+
+        // 依據各 entry 品項動態合併資料
+        entries.forEach(entry => {
+          const room = roomById(entry.roomId);
+          const prefix = `${room.name} ${entry.item}`;
+          const touched = entry.touched || {};
+
+          if (touched.peopleQty || (!entry.touched && Number(entry.peopleQty || 0))) {
+            combinedFields[`${prefix} 人數`] = Number(entry.peopleQty || 0);
+          }
+          if (touched.inQty || (!entry.touched && Number(entry.inQty || 0))) {
+            const inLabel = String(entry.item || "").includes("補充") ? "補充數" : "補充";
+            combinedFields[`${prefix} ${inLabel}`] = Number(entry.inQty || 0);
+          }
+          if (touched.balanceQty || (!entry.touched && Number(entry.balanceQty || 0))) {
+            combinedFields[`${prefix} 結存`] = Number(entry.balanceQty || 0);
+          }
+          if (touched.usedQty || (!entry.touched && Number(entry.usedQty || 0))) {
+            combinedFields[`${prefix} 用量`] = Number(entry.usedQty || 0);
+          }
+        });
+
+        // 醫事人員帳號：保證作為資料結構的「最後一個欄位」追加寫入
+        const currentUser = sessionStorage.getItem("radiology_user") || "";
+        combinedFields["帳號名稱"] = currentUser;
+
+        // 向 GAS 發送單次請求，實現完美原子化寫入
         const response = await fetch(settings.apiUrl, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({
             action: "upsertDaily",
-            sheet: settings.sheets[entry.roomId],
-            row: entry,
-            fields: buildDailyFields(entry)
+            sheet: sheetName,
+            row: firstEntry, // 傳遞首筆資料作為 metadata
+            fields: combinedFields
           })
         });
+
         if (!response.ok) throw new Error(`Google Sheets 寫入失敗：${response.status}`);
         return response.json();
       }
 
-      function buildDailyFields(entry) {
-        const room = roomById(entry.roomId);
-        const prefix = `${room.name} ${entry.item}`;
-        const touched = entry.touched || {};
-        const fields = {
-          "日期": normalizeDateKey(entry.date)
-        };
-        if (touched.note || entry.note) fields["備註"] = entry.note || "";
-        if (touched.peopleQty || (!entry.touched && Number(entry.peopleQty || 0))) fields[`${prefix} 人數`] = Number(entry.peopleQty || 0);
-        if (touched.inQty || (!entry.touched && Number(entry.inQty || 0))) {
-          const inLabel = String(entry.item || "").includes("補充") ? "補充數" : "補充";
-          fields[`${prefix} ${inLabel}`] = Number(entry.inQty || 0);
-        }
-        if (touched.balanceQty || (!entry.touched && Number(entry.balanceQty || 0))) fields[`${prefix} 結存`] = Number(entry.balanceQty || 0);
-        if (touched.usedQty || (!entry.touched && Number(entry.usedQty || 0))) fields[`${prefix} 用量`] = Number(entry.usedQty || 0);
-        return fields;
+      // 相容舊有單筆同步結構
+      export async function syncEntry(entry) {
+        return syncEntries([entry]);
       }
 
       function normalizeSheetRows(roomId, rows) {
@@ -1240,7 +1435,6 @@
         return `${year}-${month}-${day}`;
       }
 
-      // 強固型 Trim 欄位分析，徹底移除前後空白所引起的比對錯誤
       function parseDailyHeader(header, roomName) {
         const trimmedHeader = String(header || "").trim();
         const trimmedRoom = String(roomName || "").trim();
@@ -1574,6 +1768,12 @@ ${summaryData.map(d => `- ${d.name}: 使用人數 ${d.people}人, 本月消耗 $
 - 1F CT 攝影室消耗: ${syringeMetrics.ct1} 支
 - 全院注射器總計: ${syringeMetrics.total} 支
 
+【MRI注射器針筒消耗】：
+- 1F MRI 攝影室消耗: ${syringeMetrics.mri1} 支
+- 3F MRI 攝影室消耗: ${syringeMetrics.mri3} 支
+- 3T MRI 攝影室消耗: ${syringeMetrics.mri3t} 支
+- MRI注射器總計: ${syringeMetrics.mriTotal} 支
+
 【系統狀態設定】：
 - 期初庫存設定：${JSON.stringify(settings.initialStocks)}
           `;
@@ -1627,7 +1827,7 @@ ${summaryData.map(d => `- ${d.name}: 使用人數 ${d.people}人, 本月消耗 $
                 <div id="aiChatOutput" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm scrollbar-thin">
                   <div class="bg-white border border-slate-100 rounded-lg p-3 text-slate-700 shadow-sm leading-relaxed max-w-[85%]">
                     您好！我是放射科 Gemini 智慧決策助理。我已加載了 <strong>${state.year} 年 ${state.month} 月</strong> 的盤點數據與科室耗用紀錄。
-                    您可以直接點擊上方的<b>診斷工具捷徑</b>，或在下方輸入任何關於庫存、臨床規範或分析建議的問題！
+                    您可以直接點擊上方的<b>診斷工具捷徑</b>，或在下方輸入任何關於庫存、臨床規範 or 分析建議的問題！
                   </div>
                 </div>
                 
@@ -1658,7 +1858,7 @@ ${summaryData.map(d => `- ${d.name}: 使用人數 ${d.people}人, 本月消耗 $
                     AI 語音簡報中心 (TTS)
                   </h3>
                   <p class="text-[11px] text-slate-500 mb-4 leading-relaxed">
-                    本系統支援 Gemini TTS 技術，可直接將分析成果轉化為流暢中文口白，方便您進行走動式庫存管理與語音交班。
+                    本系統支援 Gemini TTS 技術，可直接將 analysis 成果轉化為流暢中文口白，方便您進行走動式庫存管理與語音交班。
                   </p>
                   
                   <div id="aiAudioStatus" class="p-3 bg-white border border-slate-200 rounded-lg flex flex-col gap-2 shadow-sm text-xs text-slate-600">
@@ -1853,17 +2053,45 @@ ${dataSummaryContext}
           });
 
           aiContainer.querySelector("#aiBtnTrend").addEventListener("click", () => {
-            handleSendMessage("請針對本月全院各個對比劑與高壓針筒的期末庫存與消耗趨勢，進行『庫存趨勢與安全水位預警分析』，並幫我診斷是否有異常消耗或未完成盤點天數？");
+            handleSendMessage("請針對本月全院各個對比劑與高壓針筒（包含MRI注射器）的期末庫存與消耗趨勢，進行『庫存趨勢與安全水位預警分析』，並幫我診斷是否有異常消耗或未完成盤點天數？");
           });
 
           aiContainer.querySelector("#aiBtnOrder").addEventListener("click", () => {
-            handleSendMessage("請幫我評估本月各攝影室對比劑與針筒的使用速度，並以庫存管理角度提供一份精準的『申領與下期採購備貨安全水位建議報告』。");
+            handleSendMessage("請幫我評估本月各攝影室對比劑與針筒（包含MRI注射器）的使用速度，並以庫存管理角度提供一份精準的『申領與下期採購備貨安全水位建議報告』。");
           });
 
           aiContainer.querySelector("#aiBtnWarning").addEventListener("click", () => {
             handleSendMessage("請為放射科同仁整理一份臨床常見『造影劑（對比劑）外滲或滲漏（Extravasation）』的緊急處置指引，以及造影劑腎病變（CIN）的預防補水規範。");
           });
         }
+
+        const dialogObserver = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.attributeName === "open") {
+              if (entryDialog.open) {
+                const roomId = entryForm.dataset.roomId;
+                if (["ct1", "ct3", "rct"].includes(roomId)) {
+                  const visipagueIn = entryForm.querySelector('input[name="visipague:inQty"]');
+                  const visipagueBalance = entryForm.querySelector('input[name="visipague:balanceQty"]');
+
+                  if (visipagueIn) {
+                    visipagueIn.value = "X";
+                    visipagueIn.readOnly = true;
+                    visipagueIn.classList.add("bg-slate-100", "text-slate-400", "cursor-not-allowed");
+                  }
+
+                  if (visipagueBalance) {
+                    visipagueBalance.value = "X";
+                    visipagueBalance.readOnly = true;
+                    visipagueBalance.classList.add("bg-slate-100", "text-slate-400", "cursor-not-allowed");
+                  }
+                }
+              }
+            }
+          });
+        });
+        
+        dialogObserver.observe(entryDialog, { attributes: true });
 
         function renderRoom(target, room) {
           target.append(renderTimeline({
@@ -1917,7 +2145,7 @@ ${dataSummaryContext}
 
         function renderReferenceRoomTable(room, config) {
           const rows = calculateDailyRows(room.id, state.year, state.month);
-          const table = tableShell(`${room.name} 攝影室 每日盤點與明細登記`, "新增當日登記");
+          const table = tableShell(`${room.name} 每日盤點與明細登記`, "新增當日登記");
           table.classList.add("reference-panel");
           table.querySelector("[data-add]").addEventListener("click", () => openEntryDialog(room, isoDate(state.year, state.month, new Date().getDate())));
           table.querySelector("thead").innerHTML = `
@@ -2035,6 +2263,11 @@ ${dataSummaryContext}
               <div class="syringe-stat-card"><span>3F CT 攝影室消耗</span><strong>${metrics.ct3} 支</strong></div>
               <div class="syringe-stat-card"><span>1F CT 攝影室消耗</span><strong>${metrics.ct1} 支</strong></div>
               <div class="syringe-stat-card total"><span>高壓注射器針筒全院總計</span><strong>${metrics.total} 支</strong></div>
+              
+              <div class="syringe-stat-card"><span>1F MRI 攝影室消耗</span><strong>${metrics.mri1} 支</strong></div>
+              <div class="syringe-stat-card"><span>3F MRI 攝影室消耗</span><strong>${metrics.mri3} 支</strong></div>
+              <div class="syringe-stat-card"><span>3T MRI 攝影室消耗</span><strong>${metrics.mri3t} 支</strong></div>
+              <div class="syringe-stat-card total"><span>MRI注射器針筒全院總計</span><strong>${metrics.mriTotal} 支</strong></div>
             </div>
           `);
           panel.querySelector("[data-print-syringe]").addEventListener("click", () => window.print());
@@ -2066,11 +2299,15 @@ ${dataSummaryContext}
           entryDialog.close();
           render();
           try {
-            const results = await Promise.allSettled(savedEntries.map((entry) => syncEntry(entry)));
-            const failed = results.filter((result) => result.status === "rejected").length;
-            toast(failed ? `已儲存 ${savedEntries.length} 筆，${failed} 筆待同步` : `已儲存並同步 ${savedEntries.length} 筆`);
+            // 改為呼叫優化後的單一原子化 syncEntries 方法
+            const result = await syncEntries(savedEntries);
+            if (result && result.offline) {
+              toast(`已本機儲存 ${savedEntries.length} 筆，目前為離線模式`);
+            } else {
+              toast(`已儲存並成功同步 ${savedEntries.length} 筆資料至試算表`);
+            }
           } catch (error) {
-            toast(`已本機儲存，同步待重試：${error.message}`);
+            toast(`已本機儲存，同步失敗：${error.message}`);
           }
         });
 
@@ -2082,6 +2319,18 @@ ${dataSummaryContext}
           const settings = loadSettings();
           document.querySelector("#apiUrlInput").value = settings.apiUrl;
           document.querySelector("#aiVoiceSelect").value = settings.aiVoice;
+          
+          // 綁定通知切換開關狀態
+          const notifToggle = document.querySelector("#notificationToggle");
+          if (notifToggle) {
+            notifToggle.checked = !!settings.enableNotifications;
+          }
+          // 綁定通知時間設定
+          const notifTimeInput = document.querySelector("#notificationTime");
+          if (notifTimeInput) {
+            notifTimeInput.value = settings.notificationTime || "17:15";
+          }
+
           document.querySelector("#initialStockInputs").innerHTML = stockSettingItems().map((item) => `
             <div class="settings-row">
               <strong>${item.label}</strong>
@@ -2103,6 +2352,12 @@ ${dataSummaryContext}
           const settings = loadSettings();
           settings.apiUrl = data.get("apiUrl") || "";
           settings.aiVoice = data.get("aiVoice") || "Charon";
+          
+          // 儲存推播通知開關與時間狀態
+          const notifToggle = document.querySelector("#notificationToggle");
+          settings.enableNotifications = notifToggle ? notifToggle.checked : false;
+          settings.notificationTime = document.querySelector("#notificationTime").value || "17:15";
+
           for (const [key, value] of data.entries()) {
             if (key.startsWith("stock:")) settings.initialStocks[key.replace("stock:", "")] = Number(value || 0);
             if (key.startsWith("sheet:")) settings.sheets[key.replace("sheet:", "")] = value || "";
@@ -2207,11 +2462,15 @@ ${dataSummaryContext}
           { recordedAt: new Date().toISOString(), month, room: "RCT", usedQty: metrics.rct },
           { recordedAt: new Date().toISOString(), month, room: "3F CT", usedQty: metrics.ct3 },
           { recordedAt: new Date().toISOString(), month, room: "1F CT", usedQty: metrics.ct1 },
-          { recordedAt: new Date().toISOString(), month, room: "高壓注射器針筒全院總計", usedQty: metrics.total }
+          { recordedAt: new Date().toISOString(), month, room: "高壓注射器針筒全院總計", usedQty: metrics.total },
+          { recordedAt: new Date().toISOString(), month, room: "1F MRI", usedQty: metrics.mri1 },
+          { recordedAt: new Date().toISOString(), month, room: "3F MRI", usedQty: metrics.mri3 },
+          { recordedAt: new Date().toISOString(), month, room: "3T MRI", usedQty: metrics.mri3t },
+          { recordedAt: new Date().toISOString(), month, room: "MRI注射器針筒全院總計", usedQty: metrics.mriTotal }
         ];
         try {
           await appendReportRows({ sheet: settings.sheets.syringe || "Sheet J", headers, rows });
-          toast(`已追加儲存 ${month} 高壓注射器針筒月紀錄`);
+          toast(`已追加儲存 ${month} 針筒與MRI注射器月紀錄`);
         } catch (error) {
           toast(error.message);
         }
@@ -2358,7 +2617,7 @@ ${dataSummaryContext}
         ct1: {
           groups: [
             referenceGroup("omni", "Omnipaque", ["Omnipaque"], ["people", "in", "balance", "used"]),
-            referenceGroup("visipague", "Visipague", ["Visipague", "Visipaque"], ["people"]),
+            referenceGroup("visipague", "Visipague", ["Visipague", "Visipaque", "Visipague 320", "Visipague320"], ["people", "in", "balance", "used"]),
             referenceGroup("injector", "高壓注射器針筒", ["高壓注射器針筒", "注射器", "針筒", "高壓針筒"], ["dose"]),
             referenceGroup("syringeRefill", "高壓注射器針筒補充", ["高壓注射器針筒補充", "針筒補充"], ["refill"])
           ]
@@ -2366,7 +2625,7 @@ ${dataSummaryContext}
         ct3: {
           groups: [
             referenceGroup("omni", "Omnipaque", ["Omnipaque"], ["people", "in", "balance", "used"]),
-            referenceGroup("visipague", "Visipague", ["Visipague", "Visipaque"], ["people"]),
+            referenceGroup("visipague", "Visipague", ["Visipague", "Visipaque", "Visipague 320", "Visipague320"], ["people", "in", "balance", "used"]),
             referenceGroup("injector", "高壓注射器針筒", ["高壓注射器針筒", "注射器", "針筒", "高壓針筒"], ["dose"])
           ]
         },
@@ -2374,7 +2633,7 @@ ${dataSummaryContext}
           groups: [
             referenceGroup("omni", "Omnipaque", ["Omnipaque"], ["people", "in", "balance", "used"]),
             referenceGroup("ultravist370", "Ultravist 370", ["Ultravist370", "Ultravist 370"], ["people", "in", "balance", "used"]),
-            referenceGroup("visipague", "Visipague", ["Visipague", "Visipaque"], ["people"]),
+            referenceGroup("visipague", "Visipague", ["Visipague", "Visipaque", "Visipague 320", "Visipague320"], ["people", "in", "balance", "used"]),
             referenceGroup("injector", "高壓注射器針筒", ["高壓注射器針筒", "注射器", "針筒", "高壓針筒"], ["dose"])
           ]
         },
@@ -2382,21 +2641,24 @@ ${dataSummaryContext}
           groups: [
             referenceGroup("gadovist", "Gadovist", ["Gadovist", "Gadolinium"], ["people", "in", "balance", "used"]),
             referenceGroup("dotarem", "Dotarem", ["Dotarem"], ["people", "in", "balance", "used"]),
-            referenceGroup("primovist", "Primovist", ["Primovist", "Eovist"], ["people"])
+            referenceGroup("primovist", "Primovist", ["Primovist", "Eovist"], ["people"]),
+            referenceGroup("mriInjector", "MRI注射器", ["MRI注射器", "mri_injector"], ["dose"])
           ]
         },
         mri3: {
           groups: [
             referenceGroup("gadovist", "Gadovist", ["Gadovist", "Gadolinium"], ["people", "in", "balance", "used"]),
             referenceGroup("dotarem", "Dotarem", ["Dotarem"], ["people", "in", "balance", "used"]),
-            referenceGroup("primovist", "Primovist", ["Primovist", "Eovist"], ["people"])
+            referenceGroup("primovist", "Primovist", ["Primovist", "Eovist"], ["people"]),
+            referenceGroup("mriInjector", "MRI注射器", ["MRI注射器", "mri_injector"], ["dose"])
           ]
         },
         mri3t: {
           groups: [
             referenceGroup("gadovist", "Gadovist", ["Gadovist", "Gadolinium"], ["people", "in", "balance", "used"]),
             referenceGroup("dotarem", "Dotarem", ["Dotarem"], ["people", "in", "balance", "used"]),
-            referenceGroup("primovist", "Primovist", ["Primovist", "Eovist"], ["people"])
+            referenceGroup("primovist", "Primovist", ["Primovist", "Eovist"], ["people"]),
+            referenceGroup("mriInjector", "MRI注射器", ["MRI注射器", "mri_injector"], ["dose"])
           ]
         },
         special: {
@@ -2411,12 +2673,12 @@ ${dataSummaryContext}
           groups: [
             referenceGroup("omni", "Omnipaque", ["Omnipaque"], ["people", "in", "balance", "used"]),
             referenceGroup("ultravist370", "Ultravist 370", ["Ultravist370", "Ultravist 370"], ["people", "in", "balance", "used"]),
-            referenceGroup("visipague", "Visipague", ["Visipague", "Visipaque"], ["people"])
+            referenceGroup("visipague", "Visipague", ["Visipague", "Visipaque", "Visipague 320", "Visipague320"], ["people", "in", "balance", "used"])
           ]
         },
         ivp: {
           groups: [
-            referenceGroup("ultravist300", "Ultravist 300", ["Ultravist300", "Ultravist 300"], ["people", "in", "balance", "used"])
+            referenceGroup("ultravist300", "Ultravist 300", ["Contrast 300", "Ultravist300", "Ultravist 300"], ["people", "in", "balance", "used"])
           ]
         }
       };
@@ -2448,6 +2710,7 @@ ${dataSummaryContext}
         }[column] || column;
       }
 
+      // 用於區分高壓針筒用量的特殊高亮樣式
       function columnClass(column) {
         return column === "used" ? "usage-head" : "";
       }
@@ -2476,7 +2739,7 @@ ${dataSummaryContext}
         { name: "Omnipaque", aliases: ["omnipaque"] },
         { name: "Ultravist 300", aliases: ["ultravist300", "ultravist 300", "優視特300"] },
         { name: "Ultravist 370", aliases: ["ultravist370", "ultravist 370"] },
-        { name: "Visipague 320", aliases: ["visipague320", "visipague", "visipaque"] },
+        { name: "Visipague", aliases: ["visipague", "visipague320", "visipaque"] },
         { name: "鋇劑 (Barium)", aliases: ["barium", "鋇劑"] },
         { name: "Gadovist", aliases: ["gadovist", "gadolinium"] },
         { name: "Dotarem", aliases: ["dotarem"] },
@@ -2497,17 +2760,31 @@ ${dataSummaryContext}
         });
       }
 
-      function buildSyringeMetrics(year, month) {
+      export function buildSyringeMetrics(year, month) {
         const targetRooms = ["rct", "ct3", "ct1"];
         const values = Object.fromEntries(targetRooms.map((roomId) => {
           const entries = filterEntriesByAliases(entriesFor(roomId, year, month), ["高壓注射器針筒", "注射器", "針筒", "高壓針筒"]);
           return [roomId, sumEntries(entries, "usedQty")];
         }));
+
+        const mriRooms = ["mri1", "mri3", "mri3t"];
+        const mriValues = Object.fromEntries(mriRooms.map((roomId) => {
+          const entries = filterEntriesByAliases(entriesFor(roomId, year, month), ["MRI注射器", "mri_injector"]);
+          return [roomId, sumEntries(entries, "usedQty")];
+        }));
+
+        const syringeTotal = (values.rct || 0) + (values.ct3 || 0) + (values.ct1 || 0);
+        const mriTotal = (mriValues.mri1 || 0) + (mriValues.mri3 || 0) + (mriValues.mri3t || 0);
+
         return {
           rct: values.rct || 0,
           ct3: values.ct3 || 0,
           ct1: values.ct1 || 0,
-          total: (values.rct || 0) + (values.ct3 || 0) + (values.ct1 || 0)
+          total: syringeTotal,
+          mri1: mriValues.mri1 || 0,
+          mri3: mriValues.mri3 || 0,
+          mri3t: mriValues.mri3t || 0,
+          mriTotal: mriTotal
         };
       }
 
@@ -2638,6 +2915,39 @@ ${dataSummaryContext}
 
         const ui = createUI(state, actions);
 
+        // 綁定測試通知按鈕
+        const testBtn = document.querySelector("#testNotificationBtn");
+        if (testBtn) {
+          testBtn.addEventListener("click", async () => {
+            const granted = await requestNotificationPermission();
+            if (granted) {
+              sendLocalNotification(
+                "放射科智慧盤點系統 - 測試成功 🔔",
+                "推播提醒功能已順利開啟！未來當系統偵測到未完成盤點的地點及日期時，將自動發送提醒通知。"
+              );
+              toast("🔔 測試推播通知已發送，請查看手機通知中心！");
+            } else {
+              toast("❌ 權限請求被拒絕，請前往手機瀏覽器設定中手動啟用。");
+            }
+          });
+        }
+
+        // 綁定設定中的通知開關事件
+        const notifToggle = document.querySelector("#notificationToggle");
+        if (notifToggle) {
+          notifToggle.addEventListener("change", async () => {
+            if (notifToggle.checked) {
+              const granted = await requestNotificationPermission();
+              if (!granted) {
+                notifToggle.checked = false;
+                toast("❌ 無法啟用通知：未取得瀏覽器通知授權");
+              } else {
+                toast("✅ 成功啟用未完成盤點手機推播！");
+              }
+            }
+          });
+        }
+
         document.querySelector("#backBtn").addEventListener("click", () => {
           state.roomId = null;
           ui.render();
@@ -2651,12 +2961,133 @@ ${dataSummaryContext}
           ui.syncCurrentRoom();
         });
 
-        ui.render();
+        // 定義登出按鈕事件監聽器，重設驗證 Session 並返回登入 overlay
+        document.querySelector("#logoutBtn").addEventListener("click", () => {
+          sessionStorage.removeItem("radiology_auth");
+          sessionStorage.removeItem("radiology_user");
+          
+          document.querySelector("#username").value = "";
+          document.querySelector("#password").value = "";
+          
+          const loginError = document.querySelector("#loginError");
+          if (loginError) loginError.classList.add("hidden");
 
-        // 智慧型自動修復：當 B 平台重新整理時，自動向試算表發起同步請求
-        const settings = loadSettings();
-        if (settings.apiUrl) {
-          ui.syncCurrentRoom();
+          const loginOverlay = document.querySelector("#loginOverlay");
+          const appContainer = document.querySelector("#app");
+          
+          if (loginOverlay) loginOverlay.classList.remove("hidden");
+          if (appContainer) appContainer.classList.add("hidden");
+          
+          state.roomId = null;
+          toast("已安全登出系統");
+        });
+
+        // 定義登入成功後的初始化邏輯
+        function startApp() {
+          ui.render();
+          // 當平台登入成功或有 Session 時，自動向試算表發起同步請求
+          const settings = loadSettings();
+          if (settings.apiUrl) {
+            ui.syncCurrentRoom();
+          }
+
+          // 初始化推播調度定時器
+          initNotificationScheduler();
+
+          // 登入成功後，延遲 4.5 秒自動檢查一次（若此時已過 17:15 且今日未提醒，則主動補推）
+          setTimeout(() => {
+            const now = new Date();
+            const currentHourMin = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+            if (currentHourMin >= settings.notificationTime) {
+              checkAndTriggerIncompleteAlert(false);
+            }
+          }, 4500);
+        }
+
+        // 醫事人員授權帳號與密碼對照表 (依據 Google 試算表 "代號" 內容)
+        const AUTH_USERS = {
+          "a": "1398",
+          "m": "6034",
+          "V": "1474",
+          "T": "1953",
+          "X": "4414",
+          "r": "10774",
+          "E": "3141",
+          "Y": "11155",
+          "g": "5925",
+          "i": "10526",
+          "H": "10245",
+          "tt": "14861",
+          "W": "11539",
+          "K": "11401",
+          "A": "10451",
+          "cc": "13266",
+          "uu": "14377",
+          "ee": "15050",
+          "Q": "7306",
+          "O": "5288",
+          "P": "3708",
+          "y": "13731",
+          "NN": "15449",
+          "u": "3377",
+          "I": "6713",
+          "e": "10648",
+          "f": "6029",
+          "J": "2622",
+          "h": "5371",
+          "OO": "12759",
+          "S": "2203",
+          "C": "3949",
+          "F": "6921",
+          "U": "12210",
+          "jj": "14980",
+          "n": "15051",
+          "ii": "15490",
+          "xx": "15757",
+          "d": "10077",
+          "B": "7604",
+          "b": "10798",
+          "q": "6933",
+          "j": "12036",
+          "Z": "6037",
+          "II": "13302",
+          "D": "5998",
+          "t": "12041",
+        };
+
+        // 登入驗證視窗與 Session 控制 (對比試算表授權清單)
+        const loginOverlay = document.querySelector("#loginOverlay");
+        const loginForm = document.querySelector("#loginForm");
+        const loginError = document.querySelector("#loginError");
+        const appContainer = document.querySelector("#app");
+
+        // 綁定登入提交處理器 (無條件綁定，確保登出後仍可再次正常登入)
+        loginForm.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const user = document.querySelector("#username").value.trim();
+          const pass = document.querySelector("#password").value.trim();
+
+          if (AUTH_USERS[user] && AUTH_USERS[user] === pass) {
+            sessionStorage.setItem("radiology_auth", "true");
+            sessionStorage.setItem("radiology_user", user); // 儲存帳號名稱以利後續同步寫入
+            loginOverlay.classList.add("hidden");
+            appContainer.classList.remove("hidden");
+            startApp();
+          } else {
+            loginError.classList.remove("hidden");
+            document.querySelector("#password").value = "";
+            document.querySelector("#password").focus();
+          }
+        });
+
+        // 初始狀態檢測 (使用 classList 切換而非直接 remove 元素，確保登出時能重新渲染)
+        if (sessionStorage.getItem("radiology_auth") === "true") {
+          loginOverlay.classList.add("hidden");
+          appContainer.classList.remove("hidden");
+          startApp();
+        } else {
+          loginOverlay.classList.remove("hidden");
+          appContainer.classList.add("hidden");
         }
       });
     </script>
