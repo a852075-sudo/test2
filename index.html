@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>交班代辦事項 PWA</title>
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="交班代辦事項">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3652/3652191.png">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel Standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    @font-face {
+      font-family: 'ThePeakFont';
+      src: local('隨峰体'), local('隨峰體'), local('The Peak Font'), local('ThePeakFont'), local('隨峰體Beta'), local('隨峰體Plus');
+    }
+    body {
+      font-family: 'ThePeakFont', 'Noto Sans TC', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+
+  <div id="root"></div>
+
+  <!--
+    ====================================================================
+    【 FastAPI 後端程式碼架構規範與 API 端點範例 (Python + Pydantic v2) 】
+    ====================================================================
+
+    from fastapi import FastAPI, HTTPException, Depends, Query, status
+    from pydantic import BaseModel, Field, field_validator, ConfigDict
+    from typing import List, Optional
+    from datetime import date
+    import html
+
+    app = FastAPI(title="Shift Handover Master API", version="1.0.0")
+
+    # --- 1. Pydantic v2 資料模型 (Schemas) ---
+
+    class ShiftTypeBase(BaseModel):
+        name: str = Field(..., min_length=1, max_length=20, description="事項名稱 (如: 業務量統計)")
+        desc: Optional[str] = Field(None, max_length=50, description="註解說明 (如: 每月1號預設)")
+        bg_color: str = Field("#FEF3C7", pattern=r"^#([A-Fa-f0-9]{6})$", description="背景 Hex 色碼")
+        text_color: str = Field("#D97706", pattern=r"^#([A-Fa-f0-9]{6})$", description="文字 Hex 色碼")
+
+    class ShiftTypeCreate(ShiftTypeBase):
+        pass
+
+    class ShiftTypeResponse(ShiftTypeBase):
+        id: str
+        model_config = ConfigDict(from_attributes=True)
+
+    class CalendarEntryBase(BaseModel):
+        entry_date: date
+        shift_type_id: Optional[str] = None
+        note: Optional[str] = Field(None, max_length=500, description="當天注意事項/備忘錄")
+        cleared: bool = Field(False, description="是否已被使用者清除自動帶入")
+
+        @field_validator('note')
+        @classmethod
+        def sanitize_note(cls, v: Optional[str]) -> Optional[str]:
+            if v:
+                # 防範 XSS 注入，轉義特殊字元
+                return html.escape(v.strip())
+            return v
+
+    class CalendarEntryCreate(CalendarEntryBase):
+        pass
+
+    class CalendarEntryResponse(CalendarEntryBase):
+        id: str
+        model_config = ConfigDict(from_attributes=True)
+
+    # --- 2. 模擬 DB 依賴注入 (Dependency Injection) ---
+
+    def get_db_session():
+        db = {}
+        try:
+            yield db
+        finally:
+            pass
+
+    # --- 3. RESTful API 端點 ---
+
+    @app.get("/api/v1/shift-types", response_model=List[ShiftTypeResponse])
+    async def get_shift_types(db=Depends(get_db_session)):
+        """取得所有自訂事項種類"""
+        return []
+
+    @app.post("/api/v1/shift-types", response_model=ShiftTypeResponse, status_code=status.HTTP_201_CREATED)
+    async def create_shift_type(payload: ShiftTypeCreate, db=Depends(get_db_session)):
+        """新增事項種類"""
+        new_id = "st_" + str(hash(payload.name))
+        return ShiftTypeResponse(id=new_id, **payload.model_dump())
+
+    @app.get("/api/v1/entries", response_model=List[CalendarEntryResponse])
+    async def get_calendar_entries(
+        start_date: date = Query(..., description="開始日期"),
+        end_date: date = Query(..., description="結束日期"),
+        db=Depends(get_db_session)
+    ):
+        """查詢特定日期範圍內的交班紀錄"""
+        if start_date > end_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="開始日期不可大於結束日期"
+            )
+        return []
+
+    @app.post("/api/v1/entries", response_model=CalendarEntryResponse)
+    async def upsert_calendar_entry(payload: CalendarEntryCreate, db=Depends(get_db_session)):
+        """更新或新增特定日期的交班事項"""
+        return CalendarEntryResponse(id="entry_" + str(payload.entry_date), **payload.dump())
+  -->
+
+  <script type="text/babel">
+
+    /**
+     * @typedef {Object} ShiftType
+     * @property {string} id
+     * @property {string} name
+     * @property {string} desc - 事項預設註解/說明
+     * @property {string} bgColor
+     * @property {string} textColor
+     */
+
+    // 預設 6 大事項選項 (各自具備獨特顏色標籤)
+    const DEFAULT_SHIFT_TYPES = [
+      { id: '1', name: '業務量統計', desc: '每月1號預設', bgColor: '#FEF3C7', textColor: '#D97706' },
+      { id: '2', name: '5F統計', desc: '每月20號預設', bgColor: '#DBEAFE', textColor: '#2563EB' },
+      { id: '3', name: '5F保養', desc: '例行保養', bgColor: '#E0E7FF', textColor: '#4F46E5' },
+      { id: '4', name: 'Q保養', desc: 'Q系列保養', bgColor: '#F3E8FF', textColor: '#9333EA' },
+      { id: '5', name: 'Zee保養', desc: 'Zee系列保養', bgColor: '#FCE7F3', textColor: '#DB2777' },
+      { id: '6', name: 'Toshiba保養', desc: 'Toshiba保養', bgColor: '#DCFCE7', textColor: '#16A34A' }
+    ];
+
+    // 日期 Key 格式輔助函式 YYYY-MM-DD
+    const formatDateKey = (year, month, day) => {
+      const m = String(month + 1).padStart(2, '0');
+      const d = String(day).padStart(2, '0');
+      return `${year}-${m}-${d}`;
+    };
+
+    const App = () => {
+      const [currentDate, setCurrentDate] = React.useState(new Date());
+      const [shiftTypes, setShiftTypes] = React.useState(() => {
+        const saved = localStorage.getItem('handover_task_types_v3');
+        return saved ? JSON.parse(saved) : DEFAULT_SHIFT_TYPES;
+      });
+      const [entries, setEntries] = React.useState(() => {
+        const saved = localStorage.getItem('handover_calendar_entries_v3');
+        return saved ? JSON.parse(saved) : {};
+      });
+
+      // 操作模式：開啟預設為 'view' (點選查看)，點擊切換按鈕可切換為 'edit' (輸入資料)
+      const [mode, setMode] = React.useState('view');
+
+      // UI 狀態控制
+      const [selectedDate, setSelectedDate] = React.useState(null);
+      const [isBottomSheetOpen, setIsBottomSheetOpen] = React.useState(false);
+      const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
+      const [isManageModalOpen, setIsManageModalOpen] = React.useState(false);
+      const [noteInput, setNoteInput] = React.useState('');
+      const [toastMessage, setToastMessage] = React.useState(null);
+
+      // PWA 安裝提示
+      const [deferredPrompt, setDeferredPrompt] = React.useState(null);
+
+      React.useEffect(() => {
+        localStorage.setItem('handover_task_types_v3', JSON.stringify(shiftTypes));
+      }, [shiftTypes]);
+
+      React.useEffect(() => {
+        localStorage.setItem('handover_calendar_entries_v3', JSON.stringify(entries));
+      }, [entries]);
+
+      // 取得特定日期的事項（包含 1 號/20 號自動帶入邏輯）
+      const getEffectiveEntry = React.useCallback((dateKey, day) => {
+        const existing = entries[dateKey];
+        
+        // 若使用者曾手動清除該日，則不自動帶入
+        if (existing && existing.cleared) {
+          return { shiftTypeId: null, note: existing.note || '' };
+        }
+
+        // 若已有使用者明確設定的事項，直接使用
+        if (existing && existing.shiftTypeId) {
+          return existing;
+        }
+
+        // 自動帶入規則：1號 -> 業務量統計 (id: '1'), 20號 -> 5F統計 (id: '2')
+        let autoShiftId = null;
+        if (day === 1) {
+          const task1 = shiftTypes.find(s => s.name === '業務量統計');
+          autoShiftId = task1 ? task1.id : '1';
+        } else if (day === 20) {
+          const task20 = shiftTypes.find(s => s.name === '5F統計');
+          autoShiftId = task20 ? task20.id : '2';
+        }
+
+        return {
+          shiftTypeId: autoShiftId,
+          note: existing ? existing.note : ''
+        };
+      }, [entries, shiftTypes]);
+
+      // 註冊 PWA 事件
+      React.useEffect(() => {
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          setDeferredPrompt(e);
+        });
+
+        const manifest = {
+          name: "交班代辦事項 PWA",
+          short_name: "交班事項",
+          start_url: ".",
+          display: "standalone",
+          background_color: "#f1f5f9",
+          theme_color: "#4f46e5",
+          icons: [{
+            src: "https://cdn-icons-png.flaticon.com/512/3652/3652191.png",
+            sizes: "512x512",
+            type: "image/png"
+          }]
+        };
+        const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = URL.createObjectURL(blob);
+        document.head.appendChild(manifestLink);
+      }, []);
+
+      const showToast = (msg) => {
+        setToastMessage(msg);
+        setTimeout(() => setToastMessage(null), 2500);
+      };
+
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const firstDayOfWeek = new Date(year, month, 1).getDay();
+
+      const handlePrevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+      const handleNextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+      const handleToday = () => setCurrentDate(new Date());
+
+      const handleDateClick = (day) => {
+        const dateKey = formatDateKey(year, month, day);
+        setSelectedDate(dateKey);
+        const currentEntry = getEffectiveEntry(dateKey, day);
+        setNoteInput(currentEntry.note || '');
+
+        if (mode === 'edit') {
+          setIsBottomSheetOpen(true);
+        } else {
+          setIsViewModalOpen(true);
+        }
+      };
+
+      const handleSelectShift = (shiftTypeId) => {
+        if (!selectedDate) return;
+        setEntries(prev => ({
+          ...prev,
+          [selectedDate]: {
+            ...prev[selectedDate],
+            shiftTypeId: shiftTypeId,
+            cleared: false
+          }
+        }));
+        showToast('已套用事項');
+      };
+
+      const handleSaveNote = () => {
+        if (!selectedDate) return;
+        const day = parseInt(selectedDate.split('-')[2], 10);
+        const currentEffective = getEffectiveEntry(selectedDate, day);
+
+        setEntries(prev => ({
+          ...prev,
+          [selectedDate]: {
+            ...prev[selectedDate],
+            shiftTypeId: prev[selectedDate]?.shiftTypeId !== undefined 
+              ? prev[selectedDate].shiftTypeId 
+              : currentEffective.shiftTypeId,
+            note: noteInput.trim(),
+            cleared: false
+          }
+        }));
+        showToast('注意事項已儲存');
+        setIsBottomSheetOpen(false);
+      };
+
+      const handleClearDateEntry = () => {
+        if (!selectedDate) return;
+        setEntries(prev => ({
+          ...prev,
+          [selectedDate]: {
+            shiftTypeId: null,
+            note: '',
+            cleared: true
+          }
+        }));
+        setNoteInput('');
+        showToast('已清除當天紀錄');
+        setIsBottomSheetOpen(false);
+      };
+
+      const handleInstallPWA = () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choice) => {
+            if (choice.outcome === 'accepted') showToast('已安裝交班代辦事項！');
+            setDeferredPrompt(null);
+          });
+        }
+      };
+
+      return (
+        <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg flex flex-col relative pb-12">
+          
+          {/* Toast 訊息列 */}
+          {toastMessage && (
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-2 rounded-full text-sm font-medium shadow-xl transition-all duration-300 animate-bounce">
+              {toastMessage}
+            </div>
+          )}
+
+          {}
+          <header className="bg-indigo-600 text-white p-4 sticky top-0 z-10 shadow-md">
+            <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
+              <h1 className="text-lg font-bold flex items-center gap-1.5">
+                <span>📋</span> 交班代辦事項
+              </h1>
+
+              <div className="flex gap-1.5 items-center">
+                {deferredPrompt && (
+                  <button 
+                    onClick={handleInstallPWA}
+                    className="bg-amber-400 hover:bg-amber-300 text-indigo-950 px-2 py-1 rounded-full text-xs font-bold transition shadow"
+                  >
+                    安裝
+                  </button>
+                )}
+
+                {/* 單一按鈕模式切換：點一下切換輸入，再點一次切換查看 */}
+                <button
+                  onClick={() => setMode(prev => prev === 'view' ? 'edit' : 'view')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm active:scale-95 ${
+                    mode === 'view' 
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-white' 
+                      : 'bg-amber-400 hover:bg-amber-300 text-slate-900'
+                  }`}
+                  title="點擊切換模式"
+                >
+                  {mode === 'view' ? '👁️ 點選查看' : '✏️ 輸入資料'}
+                </button>
+
+                <button
+                  onClick={() => setIsManageModalOpen(true)}
+                  className="bg-indigo-500 hover:bg-indigo-400 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition shrink-0"
+                >
+                  ⚙️ 設定
+                </button>
+              </div>
+            </div>
+
+            {/* 月份切換列 */}
+            <div className="flex justify-between items-center mt-3 bg-indigo-700/50 p-2 rounded-xl backdrop-blur-sm">
+              <button 
+                onClick={handlePrevMonth}
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-indigo-500/40 hover:bg-indigo-500 active:scale-95 transition"
+              >
+                ◀
+              </button>
+              
+              <div className="text-center">
+                <span className="text-lg font-bold tracking-wide">{year} 年 {month + 1} 月</span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={handleToday}
+                  className="px-2.5 py-1 bg-indigo-500/60 hover:bg-indigo-500 text-xs rounded-md transition font-medium"
+                >
+                  今天
+                </button>
+                <button 
+                  onClick={handleNextMonth}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-indigo-500/40 hover:bg-indigo-500 active:scale-95 transition"
+                >
+                  ▶
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {}
+          <main className="p-3 flex-1 flex flex-col">
+            {/* 目前模式提示文字 */}
+            <div className={`text-center py-1.5 px-3 text-xs font-medium rounded-lg mb-2 flex items-center justify-center gap-1 transition-colors ${
+              mode === 'edit' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            }`}>
+              {mode === 'edit' 
+                ? '✏️ 目前為「輸入模式」：點擊日期可編輯事項與備忘錄' 
+                : '👁️ 目前為「查看模式」：點擊日期可輕鬆檢視事項與註解'}
+            </div>
+
+            {/* 星期 Header */}
+            <div className="grid grid-cols-7 text-center font-semibold text-xs text-slate-500 py-2 border-b border-slate-100">
+              <span className="text-red-500">日</span>
+              <span>一</span>
+              <span>二</span>
+              <span>三</span>
+              <span>四</span>
+              <span>五</span>
+              <span className="text-indigo-500">六</span>
+            </div>
+
+            {/* 月曆日曆 Grid */}
+            <div className="grid grid-cols-7 gap-1 mt-2 flex-1 auto-rows-fr">
+              {/* 補白區塊 */}
+              {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                <div key={`empty-${i}`} className="bg-slate-50/50 rounded-lg min-h-[68px]"></div>
+              ))}
+
+              {/* 日期區塊 */}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1;
+                const dateKey = formatDateKey(year, month, day);
+                const entry = getEffectiveEntry(dateKey, day);
+                const shift = entry.shiftTypeId ? shiftTypes.find(s => s.id === entry.shiftTypeId) : null;
+                const isToday = formatDateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()) === dateKey;
+
+                return (
+                  <div
+                    key={dateKey}
+                    onClick={() => handleDateClick(day)}
+                    className={`border rounded-xl p-1 flex flex-col justify-between min-h-[72px] cursor-pointer transition active:scale-95 relative ${
+                      isToday 
+                        ? 'border-indigo-500 bg-indigo-50/30 font-bold ring-2 ring-indigo-200' 
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      {/* 將日期字體大小放大為 text-base (16px) */}
+                      <span className={`text-base ${isToday ? 'text-indigo-600 font-extrabold' : 'text-slate-700'}`}>
+                        {day}
+                      </span>
+                      {entry?.note && (
+                        <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" title="有注意事項"></span>
+                      )}
+                    </div>
+
+                    {/* 事項標籤：設定 break-words 與 leading-tight 以達成名稱自動換行 */}
+                    {shift ? (
+                      <div
+                        style={{ backgroundColor: shift.bgColor, color: shift.textColor }}
+                        className="text-[10px] font-bold p-1 rounded-md text-center shadow-sm mt-1 flex items-center justify-center leading-tight break-words w-full min-h-[28px]"
+                        title={shift.name}
+                      >
+                        <span className="break-words w-full text-center leading-tight">{shift.name}</span>
+                      </div>
+                    ) : (
+                      <div className="min-h-[28px]"></div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </main>
+
+          {}
+          {/* 查看模式 Modal */}
+          {isViewModalOpen && selectedDate && (
+            <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+              <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 shadow-2xl transition-all">
+                <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                  <div>
+                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">查看模式</span>
+                    <h3 className="font-bold text-slate-800 text-lg mt-1">{selectedDate} 交班細節</h3>
+                  </div>
+                  <button onClick={() => setIsViewModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-xl font-bold p-1">✕</button>
+                </div>
+
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-slate-500 mb-1.5">標註事項：</p>
+                  {(() => {
+                    const day = parseInt(selectedDate.split('-')[2], 10);
+                    const currentEntry = getEffectiveEntry(selectedDate, day);
+                    const currentShift = currentEntry.shiftTypeId ? shiftTypes.find(s => s.id === currentEntry.shiftTypeId) : null;
+                    if (currentShift) {
+                      return (
+                        <div style={{ backgroundColor: currentShift.bgColor, color: currentShift.textColor }} className="p-3 rounded-xl font-bold text-sm shadow-sm flex flex-col justify-center border border-black/5">
+                          <span className="text-base">{currentShift.name}</span>
+                          {currentShift.desc && <span className="text-xs opacity-80 font-normal mt-0.5">{currentShift.desc}</span>}
+                        </div>
+                      );
+                    }
+                    return <p className="text-slate-400 text-sm bg-slate-50 p-3 rounded-xl border border-slate-100">當天未設定代辦事項</p>;
+                  })()}
+                </div>
+
+                <div className="mb-6">
+                  <p className="text-xs font-semibold text-slate-500 mb-1.5">當天注意事項 / 備忘錄：</p>
+                  {(() => {
+                    const day = parseInt(selectedDate.split('-')[2], 10);
+                    const currentEntry = getEffectiveEntry(selectedDate, day);
+                    if (currentEntry.note) {
+                      return <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 text-sm rounded-xl whitespace-pre-wrap">{currentEntry.note}</div>;
+                    }
+                    return <p className="text-slate-400 text-sm bg-slate-50 p-3 rounded-xl border border-slate-100">無注意事項紀錄</p>;
+                  })()}
+                </div>
+
+                <button 
+                  onClick={() => {
+                    setIsViewModalOpen(false);
+                    setMode('edit');
+                    setIsBottomSheetOpen(true);
+                  }}
+                  className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-md hover:bg-indigo-700 transition flex items-center justify-center gap-1.5"
+                >
+                  ✏️ 切換至輸入模式編輯當天
+                </button>
+              </div>
+            </div>
+          )}
+
+          {}
+          {/* 輸入模式 Bottom Sheet / Modal */}
+          {isBottomSheetOpen && selectedDate && (
+            <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+              <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-5 shadow-2xl transition-all max-h-[90vh] overflow-y-auto no-scrollbar">
+                <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-3">
+                  <div>
+                    <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">輸入模式</span>
+                    <h3 className="font-bold text-slate-800 text-base mt-1">{selectedDate} 設定事項與備忘</h3>
+                  </div>
+                  <button onClick={() => setIsBottomSheetOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1">✕</button>
+                </div>
+
+                <p className="text-xs font-semibold text-slate-600 mb-2">點擊一鍵套用事項：</p>
+                <div className="grid grid-cols-2 gap-2.5 mb-5">
+                  {shiftTypes.map(shift => (
+                    <button
+                      key={shift.id}
+                      onClick={() => handleSelectShift(shift.id)}
+                      style={{ backgroundColor: shift.bgColor, color: shift.textColor }}
+                      className="p-2.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition flex flex-col items-center justify-center border border-black/5 min-h-[50px]"
+                    >
+                      <span className="break-words font-bold text-xs sm:text-sm text-center leading-snug w-full">{shift.name}</span>
+                      {shift.desc && <span className="text-[10px] opacity-80 mt-0.5 break-words text-center">{shift.desc}</span>}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    📝 當天注意事項 / 備忘錄：
+                  </label>
+                  <textarea
+                    rows="3"
+                    value={noteInput}
+                    onChange={(e) => setNoteInput(e.target.value)}
+                    placeholder="例如：需交接儀器保養報告、確認數據..."
+                    className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  ></textarea>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleClearDateEntry}
+                    className="w-1/3 py-3 border border-red-200 text-red-600 rounded-xl font-bold text-sm hover:bg-red-50 transition"
+                  >
+                    清除當天
+                  </button>
+                  <button
+                    onClick={handleSaveNote}
+                    className="w-2/3 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-md hover:bg-indigo-700 transition"
+                  >
+                    儲存注意事項
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {}
+          {/* 管理預設事項 Modal */}
+          {isManageModalOpen && (
+            <ShiftManagementModal
+              shiftTypes={shiftTypes}
+              setShiftTypes={setShiftTypes}
+              onClose={() => setIsManageModalOpen(false)}
+              showToast={showToast}
+            />
+          )}
+        </div>
+      );
+    };
+
+    const ShiftManagementModal = ({ shiftTypes, setShiftTypes, onClose, showToast }) => {
+      const [name, setName] = React.useState('');
+      const [desc, setDesc] = React.useState('');
+      const [bgColor, setBgColor] = React.useState('#E0E7FF');
+      const [textColor, setTextColor] = React.useState('#3730A3');
+
+      const handleAddShift = (e) => {
+        e.preventDefault();
+        if (!name.trim()) {
+          showToast('請填寫事項名稱');
+          return;
+        }
+        const newShift = {
+          id: Date.now().toString(),
+          name: name.trim(),
+          desc: desc.trim(),
+          bgColor,
+          textColor
+        };
+        setShiftTypes([...shiftTypes, newShift]);
+        setName('');
+        setDesc('');
+        showToast('已新增事項選項');
+      };
+
+      const handleDeleteShift = (id) => {
+        if (shiftTypes.length <= 1) {
+          showToast('最少需保留一個事項選項');
+          return;
+        }
+        setShiftTypes(shiftTypes.filter(s => s.id !== id));
+        showToast('已刪除事項');
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <h3 className="font-bold text-slate-800 text-base">⚙️ 管理預設事項選項</h3>
+              <button onClick={onClose} className="text-slate-400 text-lg font-bold">✕</button>
+            </div>
+
+            <div className="my-3 overflow-y-auto max-h-48 space-y-2 pr-1">
+              {shiftTypes.map(s => (
+                <div key={s.id} className="flex justify-between items-center p-2 border border-slate-100 rounded-xl bg-slate-50">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span 
+                      style={{ backgroundColor: s.bgColor, color: s.textColor }}
+                      className="px-2 py-1 rounded text-xs font-bold shrink-0"
+                    >
+                      {s.name}
+                    </span>
+                    {s.desc && <span className="text-xs text-slate-500 truncate">{s.desc}</span>}
+                  </div>
+                  <button 
+                    onClick={() => handleDeleteShift(s.id)}
+                    className="text-red-500 text-xs font-bold hover:bg-red-50 p-1.5 rounded-lg transition shrink-0"
+                  >
+                    刪除
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <form onSubmit={handleAddShift} className="border-t border-slate-100 pt-3 space-y-3">
+              <p className="text-xs font-bold text-slate-700">新增事項：</p>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="事項名稱 (如: 5F保養)"
+                  maxLength="15"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className="p-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500"
+                />
+                <input
+                  type="text"
+                  placeholder="註解 (如: 例行保養)"
+                  maxLength="20"
+                  value={desc}
+                  onChange={e => setDesc(e.target.value)}
+                  className="p-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label className="block text-slate-500 mb-1">背景顏色：</label>
+                  <input
+                    type="color"
+                    value={bgColor}
+                    onChange={e => setBgColor(e.target.value)}
+                    className="w-full h-8 rounded cursor-pointer border-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-500 mb-1">文字顏色：</label>
+                  <input
+                    type="color"
+                    value={textColor}
+                    onChange={e => setTextColor(e.target.value)}
+                    className="w-full h-8 rounded cursor-pointer border-0"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow hover:bg-indigo-700 transition mt-2"
+              >
+                ＋ 新增事項
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+
+  </script>
+</body>
+</html>
